@@ -20,6 +20,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
@@ -27,6 +28,9 @@ import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.events.XMLEvent;
+
+import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream;
+import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 
 import lucene.gosen.test.util.AnalyzeResult;
 import lucene.gosen.test.util.ComponentContainer;
@@ -46,10 +50,12 @@ public class PagesArticlesXmlParser {
   public static void main(String[] args) throws Exception {
 
     long start = System.currentTimeMillis();
-    if (args.length != 2) {
-      System.out.println("arg[0] is old jar, arg[1] is new jar");
+    if (args.length < 2) {
+      System.out.println("arg[0] is old jar, arg[1] is new jar, [arg[2] is wikipedia xml file (default: ./data/jawiki-latest-pages-articles.xml)]");
       System.exit(-1);
     }
+    
+    String xmlPath = args.length >= 3 ? args[2] : "./data/jawiki-latest-pages-articles.xml";
     
     BufferedWriter bw = new BufferedWriter(new FileWriter("diff_result.txt"));
 
@@ -69,33 +75,44 @@ public class PagesArticlesXmlParser {
     }
     
     XMLInputFactory factory = XMLInputFactory.newInstance();
-    XMLEventReader reader = factory.createXMLEventReader(new FileInputStream(
-        "./data/jawiki-latest-pages-articles.xml"));
-    int counter = 0;
-    int falseCounter = 0;
-    while (reader.hasNext()) {
-      XMLEvent event = reader.nextEvent();
-      if (isStartElem(event, "page")) {
-        WikipediaModel model = pageParse(reader);
-        if (model != null){
-          oldModelAnalyzer.analyze(model, oldJarContainer, oldResult);
-          newModelAnalyzer.analyze(model, newJarContainer, newResult);
-          if(compareResult(bw, model, oldResult, newResult)){
-            falseCounter++;;
+    try (InputStream is = getInputStream(xmlPath)) {
+      XMLEventReader reader = factory.createXMLEventReader(is);
+      int counter = 0;
+      int falseCounter = 0;
+      while (reader.hasNext()) {
+        XMLEvent event = reader.nextEvent();
+        if (isStartElem(event, "page")) {
+          WikipediaModel model = pageParse(reader);
+          if (model != null){
+            oldModelAnalyzer.analyze(model, oldJarContainer, oldResult);
+            newModelAnalyzer.analyze(model, newJarContainer, newResult);
+            if(compareResult(bw, model, oldResult, newResult)){
+              falseCounter++;;
+            }
+            if(counter % 1000 == 0){
+              System.out.println("success count:"+counter);
+              bw.flush();
+            }
+            counter++;
           }
-          if(counter % 1000 == 0){
-            System.out.println("success count:"+counter);
-            bw.flush();
-          }
-          counter++;
         }
       }
-    }
 
-    reader.close();
-    bw.close();
-    System.out.println("falseCounter:"+falseCounter);
-    System.out.println((System.currentTimeMillis() - start) + "msec");
+      reader.close();
+      bw.close();
+      System.out.println("falseCounter:"+falseCounter);
+      System.out.println((System.currentTimeMillis() - start) + "msec");
+    }
+  }
+
+  private static InputStream getInputStream(String xmlPath) throws IOException {
+    InputStream is = new FileInputStream(xmlPath);
+    if (xmlPath.endsWith(".bz2")) {
+      return new BZip2CompressorInputStream(is);
+    } else if (xmlPath.endsWith(".gz")) {
+      return new GzipCompressorInputStream(is);
+    }
+    return is;
   }
   
   private static boolean compareResult(BufferedWriter bw, WikipediaModel model, AnalyzeResult[] oldResult, AnalyzeResult[] newResult)throws IOException{

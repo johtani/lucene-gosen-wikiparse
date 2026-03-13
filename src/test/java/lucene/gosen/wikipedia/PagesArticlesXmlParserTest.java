@@ -1,0 +1,83 @@
+package lucene.gosen.wikipedia;
+
+import org.apache.commons.compress.compressors.bzip2.BZip2CompressorOutputStream;
+import org.apache.commons.compress.compressors.gzip.GzipCompressorOutputStream;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+
+import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+public class PagesArticlesXmlParserTest {
+
+    @TempDir
+    Path tempDir;
+
+    private static final String DUMMY_XML = 
+        "<mediawiki xmlns=\"http://www.mediawiki.org/xml/export-0.10/\">\n" +
+        "  <page>\n" +
+        "    <title>Test Page</title>\n" +
+        "    <revision>\n" +
+        "      <id>1</id>\n" +
+        "      <timestamp>2023-01-01T00:00:00Z</timestamp>\n" +
+        "      <text>This is a test.</text>\n" +
+        "    </revision>\n" +
+        "  </page>\n" +
+        "</mediawiki>";
+
+    @Test
+    public void testGetInputStreamPlain() throws IOException {
+        File file = tempDir.resolve("test.xml").toFile();
+        try (FileOutputStream fos = new FileOutputStream(file)) {
+            fos.write(DUMMY_XML.getBytes(StandardCharsets.UTF_8));
+        }
+
+        try (InputStream is = invokeGetInputStream(file.getAbsolutePath());
+             BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
+            assertEquals(DUMMY_XML.split("\n")[0], reader.readLine());
+        }
+    }
+
+    @Test
+    public void testGetInputStreamGzip() throws IOException {
+        File file = tempDir.resolve("test.xml.gz").toFile();
+        try (GzipCompressorOutputStream gzos = new GzipCompressorOutputStream(new FileOutputStream(file))) {
+            gzos.write(DUMMY_XML.getBytes(StandardCharsets.UTF_8));
+        }
+
+        try (InputStream is = invokeGetInputStream(file.getAbsolutePath());
+             BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
+            assertEquals(DUMMY_XML.split("\n")[0], reader.readLine());
+        }
+    }
+
+    @Test
+    public void testGetInputStreamBzip2() throws IOException {
+        File file = tempDir.resolve("test.xml.bz2").toFile();
+        try (BZip2CompressorOutputStream bzos = new BZip2CompressorOutputStream(new FileOutputStream(file))) {
+            bzos.write(DUMMY_XML.getBytes(StandardCharsets.UTF_8));
+        }
+
+        try (InputStream is = invokeGetInputStream(file.getAbsolutePath());
+             BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
+            assertEquals(DUMMY_XML.split("\n")[0], reader.readLine());
+        }
+    }
+
+    private InputStream invokeGetInputStream(String path) throws IOException {
+        try {
+            java.lang.reflect.Method method = PagesArticlesXmlParser.class.getDeclaredMethod("getInputStream", String.class);
+            method.setAccessible(true);
+            return (InputStream) method.invoke(null, path);
+        } catch (Exception e) {
+            if (e.getCause() instanceof IOException) {
+                throw (IOException) e.getCause();
+            }
+            throw new RuntimeException(e);
+        }
+    }
+}

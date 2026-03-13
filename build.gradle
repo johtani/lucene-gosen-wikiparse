@@ -1,0 +1,35 @@
+plugins {
+    id 'java'
+}
+
+group = 'lucene.gosen'
+version = '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // 既存の JAR ファイルを利用
+    implementation files('compilelib/lucene-core-3.5.0.jar')
+    
+    // テストライブラリ
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+}
+
+// 実行用タスク
+tasks.register('runParser', JavaExec) {
+    mainClass = 'lucene.gosen.wikipedia.PagesArticlesXmlParser'
+    classpath = sourceSets.main.runtimeClasspath
+    // 引数が必要な場合は --args="old.jar new.jar" で渡せるように設定
+}

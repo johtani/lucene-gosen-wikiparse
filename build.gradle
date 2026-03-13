@@ -13,8 +13,13 @@ dependencies {
     // 既存の JAR ファイルを利用
     implementation files('compilelib/lucene-core-3.5.0.jar')
     
+    // 圧縮ファイル対応
+    implementation 'org.apache.commons:commons-compress:1.26.1'
+    
     // テストライブラリ
-    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0'
+    testImplementation platform('org.junit:junit-bom:5.10.0')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
 java {
@@ -25,6 +30,10 @@ java {
 
 tasks.withType(JavaCompile) {
     options.encoding = 'UTF-8'
+}
+
+test {
+    useJUnitPlatform()
 }
 
 // 実行用タスク

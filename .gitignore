@@ -1,0 +1,34 @@
+# Build artifacts
+bin/
+target/
+build/
+*.class
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# Eclipse
+.project
+.classpath
+.settings/
+.metadata/
+bin/
+tmp/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Others
+compilelib/
+

@@ -51,17 +51,17 @@ public class PagesArticlesXmlParser {
 
     long start = System.currentTimeMillis();
     if (args.length < 2) {
-      System.out.println("arg[0] is old jar, arg[1] is new jar, [arg[2] is wikipedia xml file (default: ./data/jawiki-latest-pages-articles.xml)]");
+      System.out.println("arg[0] is old jar or directory, arg[1] is new jar or directory, [arg[2] is wikipedia xml file (default: ./data/jawiki-latest-pages-articles.xml)]");
       System.exit(-1);
     }
-    
+
     String xmlPath = args.length >= 3 ? args[2] : "./data/jawiki-latest-pages-articles.xml";
-    
+
     BufferedWriter bw = new BufferedWriter(new FileWriter("diff_result.txt"));
 
     System.out.println("start :: "+sdf.format(new Date(start)));
-    ComponentContainer oldJarContainer = new ComponentContainer(new File[]{new File(args[0])});
-    ComponentContainer newJarContainer = new ComponentContainer(new File[]{new File(args[1])});
+    ComponentContainer oldJarContainer = new ComponentContainer(getJarFiles(args[0]));
+    ComponentContainer newJarContainer = new ComponentContainer(getJarFiles(args[1]));
 
     WikipediaModelAnalyzer oldModelAnalyzer = (WikipediaModelAnalyzer)oldJarContainer.createComponent("lucene.gosen.wikipedia.analyzer.WikipediaModelAnalyzer", null, null);
     WikipediaModelAnalyzer newModelAnalyzer = (WikipediaModelAnalyzer)newJarContainer.createComponent("lucene.gosen.wikipedia.analyzer.WikipediaModelAnalyzer", null, null);
@@ -228,5 +228,33 @@ public class PagesArticlesXmlParser {
   private static boolean isEndElem(XMLEvent event, String name) {
     return event.getEventType() == XMLStreamConstants.END_ELEMENT
         && name.equals(event.asEndElement().getName().getLocalPart());
+  }
+
+  /**
+   * 指定されたパスからJARファイルの配列を取得する
+   * ディレクトリが指定された場合は、そのディレクトリ内の全てのJARファイルを返す
+   * ファイルが指定された場合は、そのファイルのみを含む配列を返す
+   */
+  private static File[] getJarFiles(String path) {
+    File file = new File(path);
+
+    if (file.isDirectory()) {
+      // ディレクトリの場合、.jarファイルのみをフィルタリング
+      File[] jarFiles = file.listFiles((dir, name) -> name.toLowerCase().endsWith(".jar"));
+      if (jarFiles == null || jarFiles.length == 0) {
+        throw new RuntimeException("No JAR files found in directory: " + path);
+      }
+      System.out.println("Found " + jarFiles.length + " JAR file(s) in " + path);
+      for (File jarFile : jarFiles) {
+        System.out.println("  - " + jarFile.getName());
+      }
+      return jarFiles;
+    } else if (file.isFile()) {
+      // ファイルの場合、単一のファイルを含む配列を返す
+      System.out.println("Using JAR file: " + file.getName());
+      return new File[]{file};
+    } else {
+      throw new RuntimeException("Path is neither a file nor a directory: " + path);
+    }
   }
 }

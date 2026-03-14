@@ -42,3 +42,9 @@ tasks.register('runParser', JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
     // 引数が必要な場合は --args="old.jar new.jar" で渡せるように設定
 }
+
+tasks.register('runDownload', JavaExec) {
+    mainClass = 'lucene.gosen.wikipedia.WikipediaDownloader'
+    classpath = sourceSets.main.runtimeClasspath
+    // 引数が必要な場合は --args="url destination" で渡せるように設定
+}

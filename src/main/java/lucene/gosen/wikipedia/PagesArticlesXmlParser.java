@@ -106,7 +106,7 @@ public class PagesArticlesXmlParser {
   }
 
   private static InputStream getInputStream(String xmlPath) throws IOException {
-    InputStream is = new FileInputStream(xmlPath);
+    InputStream is = new java.io.BufferedInputStream(new FileInputStream(xmlPath), 65536);
     if (xmlPath.endsWith(".bz2")) {
       return new BZip2CompressorInputStream(is);
     } else if (xmlPath.endsWith(".gz")) {

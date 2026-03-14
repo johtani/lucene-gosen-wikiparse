@@ -4,6 +4,8 @@
 
 ## 1. コードの品質とメンテナンス性 (高優先度)
 
+*   **バッファサイズの最適化** (Issue #5):
+    *   `WikipediaDownloader` と `PagesArticlesXmlParser` の I/O 処理において、バッファサイズを 64KB に拡張し、一括読み込みを行うように改善しました。
 *   **例外処理の近代化**:
     *   `PagesArticlesXmlParser.java` で `System.exit(-1)` や `printStackTrace()` が使用されています。これらを適切な例外スローや、後述するロギングライブラリへの移行に置き換える必要があります。
 *   **リフレクションの最適化**:
@@ -19,6 +21,8 @@
     *   `System.out` / `System.err` ではなく、SLF4J + Logback/Reload4j 等のロギングフレームワークを導入し、解析の進捗やエラー詳細を適切に記録できるようにします。
 *   **~~圧縮ファイルへの対応~~** (Issue #1):
     *   ~~Wikipedia の XML ダンプは巨大なため、`.bz2` や `.gz` 形式のまま読み込めるように `Apache Commons Compress` 等を導入することを推奨します。~~
+*   **ダンプファイルのダウンロード機能** (Issue #4):
+    *   Wikipedia のダンプファイルを自動でダウンロードする機能を追加しました。`runDownload` タスクで実行可能です。
 *   **~~詳細なレポート出力~~** (Issue #2):
     *   ~~現在は `diff_result.txt` にテキストで差分を出力していますが、どの記事でどの程度の差分が出たのかを可視化する HTML レポートなどの出力機能があると便利です。~~
 *   **Lucene/Gosen の最新版対応**:

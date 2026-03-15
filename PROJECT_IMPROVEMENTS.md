@@ -30,8 +30,15 @@
 
 ## 3. テストとドキュメント (中優先度)
 
-*   **自動テストの拡充**:
-    *   `RestrictedURLClassLoader` や `ComponentContainer` の動作を確認するための JUnit テストが不足しています。特にクラスロードの境界条件をテストする必要があります。
+*   **~~自動テストの拡充~~** (Issue #12):
+    *   ~~`RestrictedURLClassLoader` や `ComponentContainer` の動作を確認するための JUnit テストが不足しています。特にクラスロードの境界条件をテストする必要があります。~~
+    *   ~~以下のテストを追加しました:~~
+        *   ~~ComponentContainerTest (8テスト): JARファイル読み込み、境界条件~~
+        *   ~~RestrictedURLClassLoaderTest (10テスト): クラスロード動作~~
+        *   ~~WikipediaDownloaderTest (9テスト): ダウンロード機能、エラーハンドリング~~
+        *   ~~MavenJarDownloaderTest (11テスト): Maven依存関係ダウンロード~~
+        *   ~~WikipediaModelTest (15テスト): データモデルの全メソッド~~
+    *   ~~全61テスト成功~~
 *   **~~README の充実~~**:
     *   ~~引数の詳細や、解析対象とする Lucene/Gosen のバージョンに関する制約事項などを明記する必要があります。~~
 
@@ -46,6 +53,24 @@
     *   ~~Hugging FaceのWiki-40B日本語データセット（Parquet形式）をデータソースとして利用できるようになりました。~~
     *   ~~`runWiki40bDownload` タスクでダウンロード、`runWiki40bParser` タスクで解析が可能です。~~
     *   ~~軽量（test: 66MB, train: 1.2GB）で前処理済み、train/validation/testの分割済み。~~
+
+## 6. 実装状況サマリー
+
+### 完了済み ✅
+- Issue #1: 圧縮ファイルへの対応
+- Issue #4: ダンプファイルのダウンロード機能
+- Issue #5: バッファサイズの最適化
+- Issue #10: Wiki-40B日本語データセットのサポート
+- Issue #12: 自動テストの拡充
+- READMEの充実
+
+### 未対応
+- 例外処理の近代化
+- リフレクションの最適化
+- マジックナンバーの排除
+- 不自然な例外キャッチの修正
+- ロギングの導入
+- Lucene/Gosenの最新版対応
 
 ---
 作成日: 2026-03-13

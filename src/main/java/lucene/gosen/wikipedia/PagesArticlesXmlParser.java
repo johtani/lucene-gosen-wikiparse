@@ -51,11 +51,26 @@ public class PagesArticlesXmlParser {
 
     long start = System.currentTimeMillis();
     if (args.length < 2) {
-      System.out.println("arg[0] is old jar or directory, arg[1] is new jar or directory, [arg[2] is wikipedia xml file (default: ./data/jawiki-latest-pages-articles.xml)]");
+      System.out.println("arg[0] is old jar or directory, arg[1] is new jar or directory, [arg[2] is wikipedia xml file (default: ./data/jawiki-latest-pages-articles.xml)], [arg[3] is max record count (optional, default: all records)]");
       System.exit(-1);
     }
 
     String xmlPath = args.length >= 3 ? args[2] : "./data/jawiki-latest-pages-articles.xml";
+
+    // Parse max record count with validation
+    int maxRecordCount = -1; // -1 means no limit
+    if (args.length >= 4) {
+      try {
+        maxRecordCount = Integer.parseInt(args[3]);
+        if (maxRecordCount <= 0) {
+          System.err.println("Error: max record count must be a positive number");
+          System.exit(-1);
+        }
+      } catch (NumberFormatException e) {
+        System.err.println("Error: arg[3] must be a valid number, got: " + args[3]);
+        System.exit(-1);
+      }
+    }
 
     BufferedWriter bw = new BufferedWriter(new FileWriter("diff_result.txt"));
 
@@ -94,13 +109,20 @@ public class PagesArticlesXmlParser {
               bw.flush();
             }
             counter++;
+
+            // Check if max record count is reached
+            if (maxRecordCount > 0 && counter >= maxRecordCount) {
+              System.out.println("Reached max record count: " + maxRecordCount);
+              break;
+            }
           }
         }
       }
 
       reader.close();
       bw.close();
-      System.out.println("falseCounter:"+falseCounter);
+      System.out.println("total processed: " + counter);
+      System.out.println("falseCounter: " + falseCounter);
       System.out.println((System.currentTimeMillis() - start) + "msec");
     }
   }

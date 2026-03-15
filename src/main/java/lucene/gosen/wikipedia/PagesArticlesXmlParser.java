@@ -51,11 +51,12 @@ public class PagesArticlesXmlParser {
 
     long start = System.currentTimeMillis();
     if (args.length < 2) {
-      System.out.println("arg[0] is old jar or directory, arg[1] is new jar or directory, [arg[2] is wikipedia xml file (default: ./data/jawiki-latest-pages-articles.xml)]");
+      System.out.println("arg[0] is old jar or directory, arg[1] is new jar or directory, [arg[2] is wikipedia xml file (default: ./data/jawiki-latest-pages-articles.xml)], [arg[3] is max record count (optional, default: all records)]");
       System.exit(-1);
     }
 
     String xmlPath = args.length >= 3 ? args[2] : "./data/jawiki-latest-pages-articles.xml";
+    int maxRecordCount = args.length >= 4 ? Integer.parseInt(args[3]) : -1; // -1 means no limit
 
     BufferedWriter bw = new BufferedWriter(new FileWriter("diff_result.txt"));
 
@@ -94,6 +95,12 @@ public class PagesArticlesXmlParser {
               bw.flush();
             }
             counter++;
+
+            // Check if max record count is reached
+            if (maxRecordCount > 0 && counter >= maxRecordCount) {
+              System.out.println("Reached max record count: " + maxRecordCount);
+              break;
+            }
           }
         }
       }

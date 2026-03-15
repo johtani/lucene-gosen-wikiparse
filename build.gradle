@@ -12,10 +12,15 @@ repositories {
 dependencies {
     // 既存の JAR ファイルを利用
     implementation files('compilelib/lucene-core-3.5.0.jar')
-    
+
     // 圧縮ファイル対応
     implementation 'org.apache.commons:commons-compress:1.26.1'
-    
+
+    // Apache Parquet
+    implementation 'org.apache.parquet:parquet-hadoop:1.12.3'
+    implementation 'org.apache.hadoop:hadoop-common:3.3.4'
+    implementation 'org.apache.hadoop:hadoop-mapreduce-client-core:3.3.4'
+
     // テストライブラリ
     testImplementation platform('org.junit:junit-bom:5.10.0')
     testImplementation 'org.junit.jupiter:junit-jupiter'
@@ -53,4 +58,16 @@ tasks.register('runDownloadJars', JavaExec) {
     mainClass = 'lucene.gosen.wikipedia.MavenJarDownloader'
     classpath = sourceSets.main.runtimeClasspath
     // 引数が必要な場合は --args="version [destination-dir]" で渡せるように設定
+}
+
+tasks.register('runWiki40bDownload', JavaExec) {
+    mainClass = 'lucene.gosen.wikipedia.Wiki40bDownloader'
+    classpath = sourceSets.main.runtimeClasspath
+    // 引数が必要な場合は --args="[destination-dir] [TRAIN|VALIDATION|TEST|ALL]" で渡せるように設定
+}
+
+tasks.register('runWiki40bParser', JavaExec) {
+    mainClass = 'lucene.gosen.wikipedia.Wiki40bParquetParser'
+    classpath = sourceSets.main.runtimeClasspath
+    // 引数が必要な場合は --args="old.jar new.jar [parquet-file]" で渡せるように設定
 }

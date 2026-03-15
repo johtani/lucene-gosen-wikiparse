@@ -36,7 +36,21 @@ public class Wiki40bParquetParser {
         }
 
         String parquetPath = args.length >= 3 ? args[2] : "./data/wiki40b-ja/train.parquet";
-        int maxRecordCount = args.length >= 4 ? Integer.parseInt(args[3]) : -1; // -1 means no limit
+
+        // Parse max record count with validation
+        int maxRecordCount = -1; // -1 means no limit
+        if (args.length >= 4) {
+            try {
+                maxRecordCount = Integer.parseInt(args[3]);
+                if (maxRecordCount <= 0) {
+                    System.err.println("Error: max record count must be a positive number");
+                    System.exit(-1);
+                }
+            } catch (NumberFormatException e) {
+                System.err.println("Error: arg[3] must be a valid number, got: " + args[3]);
+                System.exit(-1);
+            }
+        }
 
         BufferedWriter bw = new BufferedWriter(new FileWriter("diff_result_wiki40b.txt"));
 
@@ -91,7 +105,8 @@ public class Wiki40bParquetParser {
             }
 
             bw.close();
-            System.out.println("falseCounter:" + falseCounter);
+            System.out.println("total processed: " + counter);
+            System.out.println("falseCounter: " + falseCounter);
             System.out.println((System.currentTimeMillis() - start) + "msec");
         }
     }

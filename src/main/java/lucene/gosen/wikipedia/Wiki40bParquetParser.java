@@ -20,6 +20,14 @@ import org.apache.parquet.schema.MessageType;
 import lucene.gosen.test.util.AnalyzeResult;
 import lucene.gosen.test.util.ComponentContainer;
 import lucene.gosen.wikipedia.analyzer.WikipediaModelAnalyzer;
+import lucene.gosen.wikipedia.report.ExecutionInfo;
+import lucene.gosen.wikipedia.report.HtmlReportGenerator;
+import lucene.gosen.wikipedia.report.ReportGenerator;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Wiki-40B ParquetファイルをパースしてWikipediaModelに変換するクラス
@@ -31,7 +39,7 @@ public class Wiki40bParquetParser {
     public static void main(String[] args) throws Exception {
         long start = System.currentTimeMillis();
         if (args.length < 2) {
-            System.out.println("arg[0] is old jar or directory, arg[1] is new jar or directory, [arg[2] is parquet file (default: ./data/wiki40b-ja/train.parquet)], [arg[3] is max record count (optional, default: all records)]");
+            System.out.println("arg[0] is old jar or directory, arg[1] is new jar or directory, [arg[2] is parquet file (default: ./data/wiki40b-ja/train.parquet)], [arg[3] is max record count (optional, default: all records)], [arg[4] is report format (txt or html, default: txt)]");
             System.exit(-1);
         }
 
@@ -52,11 +60,43 @@ public class Wiki40bParquetParser {
             }
         }
 
-        BufferedWriter bw = new BufferedWriter(new FileWriter("diff_result_wiki40b.txt"));
+        // Parse report format
+        String reportFormat = args.length >= 5 ? args[4].toLowerCase() : "txt";
+        if (!reportFormat.equals("txt") && !reportFormat.equals("html")) {
+            System.err.println("Error: report format must be 'txt' or 'html', got: " + reportFormat);
+            System.exit(-1);
+        }
+
+        // レポート生成の準備
+        ExecutionInfo execInfo = new ExecutionInfo();
+        execInfo.setOldJarPath(args[0]);
+        execInfo.setNewJarPath(args[1]);
+        execInfo.setDataSourcePath(parquetPath);
+        execInfo.setDataSourceType("Parquet");
+        execInfo.setMaxRecordCount(maxRecordCount);
+        execInfo.setReportFormat(reportFormat);
+        execInfo.setStartTime(new Date(start));
+
+        ReportGenerator reportGenerator = null;
+        BufferedWriter bw = null;
+
+        if ("html".equals(reportFormat)) {
+            reportGenerator = new HtmlReportGenerator();
+            reportGenerator.setExecutionInfo(execInfo);
+        } else {
+            bw = new BufferedWriter(new FileWriter("diff_result_wiki40b.txt"));
+        }
 
         System.out.println("start :: " + new Date(start));
-        ComponentContainer oldJarContainer = new ComponentContainer(getJarFiles(args[0]));
-        ComponentContainer newJarContainer = new ComponentContainer(getJarFiles(args[1]));
+        File[] oldJarFilesArray = getJarFiles(args[0]);
+        File[] newJarFilesArray = getJarFiles(args[1]);
+
+        // JAR情報をExecutionInfoに設定
+        execInfo.setOldJarFiles(Arrays.stream(oldJarFilesArray).map(File::getName).collect(Collectors.toList()));
+        execInfo.setNewJarFiles(Arrays.stream(newJarFilesArray).map(File::getName).collect(Collectors.toList()));
+
+        ComponentContainer oldJarContainer = new ComponentContainer(oldJarFilesArray);
+        ComponentContainer newJarContainer = new ComponentContainer(newJarFilesArray);
 
         WikipediaModelAnalyzer oldModelAnalyzer = (WikipediaModelAnalyzer) oldJarContainer.createComponent(
                 "lucene.gosen.wikipedia.analyzer.WikipediaModelAnalyzer", null, null);
@@ -89,7 +129,15 @@ public class Wiki40bParquetParser {
                     newModelAnalyzer.analyze(model, newJarContainer, newResult);
                     skippedCounter += skipped;
 
-                    if (compareResult(bw, model, oldResult, newResult, printToConsole)) {
+                    boolean hasDifference = false;
+                    if (reportGenerator != null) {
+                        hasDifference = compareResult(null, model, oldResult, newResult, printToConsole);
+                        reportGenerator.addDiffResult(model, oldResult, newResult, hasDifference, printToConsole);
+                    } else {
+                        hasDifference = compareResult(bw, model, oldResult, newResult, printToConsole);
+                    }
+
+                    if (hasDifference) {
                         falseCounter++;
                     }
 
@@ -99,7 +147,12 @@ public class Wiki40bParquetParser {
 
                     if (counter % 1000 == 0) {
                         System.out.println("success count:" + counter);
-                        bw.flush();
+                        if (bw != null) {
+                            bw.flush();
+                        }
+                        if (reportGenerator != null) {
+                            reportGenerator.flush();
+                        }
                     }
                     counter++;
 
@@ -111,7 +164,25 @@ public class Wiki40bParquetParser {
                 }
             }
 
-            bw.close();
+            // 処理結果をExecutionInfoに設定
+            execInfo.setTotalProcessed(counter);
+            execInfo.setDifferenceCount(falseCounter);
+            execInfo.setSkippedCount(skippedCounter);
+            execInfo.setEndTime(new Date());
+            execInfo.setDurationMs(System.currentTimeMillis() - start);
+
+            // レポート生成
+            if (bw != null) {
+                bw.close();
+            }
+
+            if (reportGenerator != null) {
+                String outputPath = "diff_result_wiki40b.html";
+                reportGenerator.generateReport(outputPath);
+                reportGenerator.close();
+                System.out.println("HTML report generated: " + outputPath);
+            }
+
             System.out.println("total processed: " + counter);
             System.out.println("falseCounter: " + falseCounter);
             System.out.println("skippedCounter: " + skippedCounter);
@@ -127,60 +198,80 @@ public class Wiki40bParquetParser {
         for (int i = 0; i < RESULT_SIZE; i++) {
             if (oldResult[i].getTotalCost() != newResult[i].getTotalCost()) {
                 String msg = "analyze result[cost] is different!!";
-                bw.append(msg);
-                bw.newLine();
+                if (bw != null) {
+                    bw.append(msg);
+                    bw.newLine();
+                }
                 if (printToConsole) System.out.println(msg);
 
                 String oldMsg = "  old[" + oldResult[i].getTotalCost() + "]";
-                bw.append(oldMsg);
-                bw.newLine();
+                if (bw != null) {
+                    bw.append(oldMsg);
+                    bw.newLine();
+                }
                 if (printToConsole) System.out.println(oldMsg);
 
                 String newMsg = "  new[" + newResult[i].getTotalCost() + "]";
-                bw.append(newMsg);
-                bw.newLine();
+                if (bw != null) {
+                    bw.append(newMsg);
+                    bw.newLine();
+                }
                 if (printToConsole) System.out.println(newMsg);
 
                 different = true;
             }
             if (different) {
                 if (i == 0) {
-                    bw.append(model.title);
+                    if (bw != null) {
+                        bw.append(model.title);
+                    }
                     if (printToConsole) System.out.println("Title: " + model.title);
                 }
             }
             if (!oldResult[i].getTermList().equals(newResult[i].getTermList())) {
                 String msg = "analyze result[termList] is different!!";
-                bw.append(msg);
-                bw.newLine();
+                if (bw != null) {
+                    bw.append(msg);
+                    bw.newLine();
+                }
                 if (printToConsole) System.out.println(msg);
 
                 String oldMsg = "  old[" + oldResult[i].getTermList().toString() + "]";
-                bw.append(oldMsg);
-                bw.newLine();
+                if (bw != null) {
+                    bw.append(oldMsg);
+                    bw.newLine();
+                }
                 if (printToConsole) System.out.println(oldMsg);
 
                 String newMsg = "  new[" + newResult[i].getTermList().toString() + "]";
-                bw.append(newMsg);
-                bw.newLine();
+                if (bw != null) {
+                    bw.append(newMsg);
+                    bw.newLine();
+                }
                 if (printToConsole) System.out.println(newMsg);
 
                 different = true;
             }
             if (!oldResult[i].getPosList().equals(newResult[i].getPosList())) {
                 String msg = "analyze result[posList] is different!!";
-                bw.append(msg);
-                bw.newLine();
+                if (bw != null) {
+                    bw.append(msg);
+                    bw.newLine();
+                }
                 if (printToConsole) System.out.println(msg);
 
                 String oldMsg = "  old[" + oldResult[i].getPosList().toString() + "]";
-                bw.append(oldMsg);
-                bw.newLine();
+                if (bw != null) {
+                    bw.append(oldMsg);
+                    bw.newLine();
+                }
                 if (printToConsole) System.out.println(oldMsg);
 
                 String newMsg = "  new[" + newResult[i].getPosList().toString() + "]";
-                bw.append(newMsg);
-                bw.newLine();
+                if (bw != null) {
+                    bw.append(newMsg);
+                    bw.newLine();
+                }
                 if (printToConsole) System.out.println(newMsg);
 
                 different = true;

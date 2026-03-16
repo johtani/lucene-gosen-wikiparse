@@ -202,7 +202,8 @@ public class HtmlReportGenerator implements ReportGenerator {
             writer.write("</td></tr>\n");
         }
 
-        writer.write("        <tr><th>Wikipedia XML</th><td>" + escapeHtml(execInfo.getXmlPath()) + "</td></tr>\n");
+        String dataSourceLabel = "Parquet".equals(execInfo.getDataSourceType()) ? "Wiki40b Parquet" : "Wikipedia XML";
+        writer.write("        <tr><th>" + dataSourceLabel + "</th><td>" + escapeHtml(execInfo.getDataSourcePath()) + "</td></tr>\n");
 
         String recordLimit = execInfo.getMaxRecordCount() > 0
                 ? execInfo.getMaxRecordCount() + " (制限あり)"

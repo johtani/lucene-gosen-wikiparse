@@ -126,11 +126,18 @@ classifierを指定することも可能です（デフォルト: ipadic）：
 - `arg[1]`: 新バージョンの JAR ファイルパスまたはディレクトリパス
 - `arg[2]` (オプション): Wikipedia XMLファイルのパス（デフォルト: `./data/jawiki-latest-pages-articles.xml`）
 - `arg[3]` (オプション): 処理する最大件数（デフォルト: 全件処理）
+- `arg[4]` (オプション): レポート形式 (`text`|`html`|`both`、デフォルト: `both`)
 
 **処理件数を制限した軽量テスト：**
 ```powershell
-# 100件だけ処理
+# 100件だけ処理（HTMLとテキストの両方を生成）
 .\gradlew runParser --args="lib/6.0.1 lib/6.2.1 data/jawiki-latest-pages-articles.xml 100"
+
+# HTMLレポートのみ生成
+.\gradlew runParser --args="lib/6.0.1 lib/6.2.1 data/jawiki-latest-pages-articles.xml 100 html"
+
+# テキストレポートのみ生成
+.\gradlew runParser --args="lib/6.0.1 lib/6.2.1 data/jawiki-latest-pages-articles.xml 100 text"
 ```
 
 #### 方法2: Wiki-40B Parquetファイルを使用
@@ -164,14 +171,41 @@ Wiki-40Bデータセットを使用する場合は、専用のパーサーを使
 
 ## 出力結果
 
-実行が完了すると、差分がある場合に以下のファイルに詳細が出力されます：
-- Wikipedia XMLパーサー: `diff_result.txt`
-- Wiki-40B Parquetパーサー: `diff_result_wiki40b.txt`
+実行が完了すると、以下のレポートファイルが生成されます：
 
-**出力内容：**
+### Wikipedia XMLパーサー
+- **HTMLレポート**: `diff_result.html` - 視覚的で詳細なレポート（推奨）
+- **テキストレポート**: `diff_result.txt` - 従来のテキスト形式
+
+### Wiki-40B Parquetパーサー
+- `diff_result_wiki40b.txt`
+
+### HTMLレポートの内容
+
+**実行情報セクション**
+- 実行開始/終了時刻、実行時間
+- Old/New JARパスとファイル一覧
+- Wikipedia XMLファイルパス
+- 最大レコード数設定
+
+**サマリーセクション**
+- 総処理数、差分あり件数、一致件数、スキップ件数
+- 差分率と一致率（パーセンテージ表示）
+- カラフルなカード形式で視覚的に表示
+
+**差分詳細セクション**
+- 差分がある記事のテーブル表示
+- 差分タイプ（cost/term/pos）のバッジ表示
+- クリックで詳細を表示/非表示
+- Old/Newの横並び比較表示
+- 元のWikipediaテキストも表示可能
+
+### テキストレポートの内容
+- 実行情報ヘッダー
 - `analyze result[cost] is different!!`: コストの合計値が異なる場合
 - `analyze result[termList] is different!!`: 抽出された単語リストが異なる場合
 - `analyze result[posList] is different!!`: 品詞リストが異なる場合
+- 処理結果サマリー
 
 ## プロジェクト構造
 

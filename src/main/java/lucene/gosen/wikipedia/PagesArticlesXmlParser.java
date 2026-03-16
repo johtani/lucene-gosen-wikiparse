@@ -44,17 +44,14 @@ import lucene.gosen.wikipedia.report.TextReportGenerator;
 /**
  * Wikipediaのjawiki-latest-pages-articles.xmlを解析する
  */
-public class PagesArticlesXmlParser {
+public class PagesArticlesXmlParser extends AbstractWikipediaParser {
 
   /** XMLで使われてる日付形式 */
   static final SimpleDateFormat sdf = new SimpleDateFormat(
       "yyyy-MM-dd'T'HH:mm:ss'Z'");
 
-  public static final int RESULT_SIZE = 2;
   /** main */
   public static void main(String[] args) throws Exception {
-
-    long start = System.currentTimeMillis();
     if (args.length < 2) {
       System.out.println("arg[0] is old jar or directory, arg[1] is new jar or directory, [arg[2] is wikipedia xml file (default: ./data/jawiki-latest-pages-articles.xml)], [arg[3] is max record count (optional, default: all records)], [arg[4] is report format (text|html|both, default: both)]");
       System.exit(-1);
@@ -84,122 +81,64 @@ public class PagesArticlesXmlParser {
       System.exit(-1);
     }
 
-    // 実行情報を収集
-    ExecutionInfo execInfo = new ExecutionInfo();
-    execInfo.setOldJarPath(args[0]);
-    execInfo.setNewJarPath(args[1]);
-    execInfo.setXmlPath(xmlPath);
-    execInfo.setMaxRecordCount(maxRecordCount);
-    execInfo.setReportFormat(reportFormat);
-    execInfo.setStartTime(new Date(start));
+    // ParserConfigを構築
+    ParserConfig config = ParserConfig.builder()
+        .oldJarPath(args[0])
+        .newJarPath(args[1])
+        .inputPath(xmlPath)
+        .maxRecordCount(maxRecordCount)
+        .reportFormat(reportFormat)
+        .build();
 
-    // JAR ファイル情報を収集
-    File[] oldJarFiles = getJarFiles(args[0]);
-    File[] newJarFiles = getJarFiles(args[1]);
-    execInfo.setOldJarFiles(Arrays.stream(oldJarFiles).map(File::getName).toList());
-    execInfo.setNewJarFiles(Arrays.stream(newJarFiles).map(File::getName).toList());
+    // パーサーを実行
+    PagesArticlesXmlParser parser = new PagesArticlesXmlParser();
+    parser.execute(config);
+  }
 
-    // レポートジェネレーターを初期化
-    List<ReportGenerator> reportGenerators = new ArrayList<>();
-    if (reportFormat.equals("text") || reportFormat.equals("both")) {
-      TextReportGenerator textGen = new TextReportGenerator("diff_result.txt");
-      textGen.setExecutionInfo(execInfo);
-      reportGenerators.add(textGen);
-    }
-    if (reportFormat.equals("html") || reportFormat.equals("both")) {
-      HtmlReportGenerator htmlGen = new HtmlReportGenerator();
-      htmlGen.setExecutionInfo(execInfo);
-      reportGenerators.add(htmlGen);
-    }
+  @Override
+  protected String getDataSourceType() {
+    return "XML";
+  }
 
-    System.out.println("start :: "+sdf.format(new Date(start)));
-    ComponentContainer oldJarContainer = new ComponentContainer(oldJarFiles);
-    ComponentContainer newJarContainer = new ComponentContainer(newJarFiles);
-
-    WikipediaModelAnalyzer oldModelAnalyzer = (WikipediaModelAnalyzer)oldJarContainer.createComponent("lucene.gosen.wikipedia.analyzer.WikipediaModelAnalyzer", null, null);
-    WikipediaModelAnalyzer newModelAnalyzer = (WikipediaModelAnalyzer)newJarContainer.createComponent("lucene.gosen.wikipedia.analyzer.WikipediaModelAnalyzer", null, null);
-
-
-    AnalyzeResult[] oldResult = new AnalyzeResult[RESULT_SIZE];
-    AnalyzeResult[] newResult = new AnalyzeResult[RESULT_SIZE];
-    for(int i=0;i<RESULT_SIZE;i++){
-      oldResult[i] = new AnalyzeResult();
-      newResult[i] = new AnalyzeResult();
-    }
-
+  @Override
+  protected Object initializeDataSource(ParserConfig config) throws Exception {
     XMLInputFactory factory = XMLInputFactory.newInstance();
-    try (InputStream is = getInputStream(xmlPath)) {
-      XMLEventReader reader = factory.createXMLEventReader(is);
-      int counter = 0;
-      int falseCounter = 0;
-      int skippedCounter = 0;
-      boolean printToConsole = (maxRecordCount > 0 && maxRecordCount <= 10);
+    InputStream is = getInputStream(config.getInputPath());
+    return factory.createXMLEventReader(is);
+  }
 
-      while (reader.hasNext()) {
-        XMLEvent event = reader.nextEvent();
-        if (isStartElem(event, "page")) {
-          WikipediaModel model = pageParse(reader);
-          if (model != null){
-            int skipped = oldModelAnalyzer.analyze(model, oldJarContainer, oldResult);
-            newModelAnalyzer.analyze(model, newJarContainer, newResult);
-            skippedCounter += skipped;
-            boolean hasDifference = compareResult(model, oldResult, newResult);
-            if(hasDifference){
-              falseCounter++;
-            }
-
-            // 各レポートジェネレーターに結果を追加
-            for (ReportGenerator generator : reportGenerators) {
-              generator.addDiffResult(model, oldResult, newResult, hasDifference, printToConsole);
-            }
-
-            if (printToConsole) {
-              printResults(counter, model, oldResult, newResult);
-            }
-
-            if(counter % 1000 == 0){
-              System.out.println("success count:"+counter);
-              for (ReportGenerator generator : reportGenerators) {
-                generator.flush();
-              }
-            }
-            counter++;
-
-            // Check if max record count is reached
-            if (maxRecordCount > 0 && counter >= maxRecordCount) {
-              System.out.println("Reached max record count: " + maxRecordCount);
-              break;
-            }
-          }
-        }
+  @Override
+  protected WikipediaModel readNextModel(Object dataSource) throws Exception {
+    XMLEventReader reader = (XMLEventReader) dataSource;
+    while (reader.hasNext()) {
+      XMLEvent event = reader.nextEvent();
+      if (isStartElem(event, "page")) {
+        return pageParse(reader);
       }
-
-      reader.close();
-
-      // 実行情報の最終更新
-      execInfo.setEndTime(new Date());
-      execInfo.setDurationMs(System.currentTimeMillis() - start);
-      execInfo.setTotalProcessed(counter);
-      execInfo.setDifferenceCount(falseCounter);
-      execInfo.setSkippedCount(skippedCounter);
-
-      // レポート生成
-      for (ReportGenerator generator : reportGenerators) {
-        if (generator instanceof TextReportGenerator) {
-          generator.generateReport("diff_result.txt");
-          System.out.println("Text report generated: diff_result.txt");
-        } else if (generator instanceof HtmlReportGenerator) {
-          generator.generateReport("diff_result.html");
-          System.out.println("HTML report generated: diff_result.html");
-        }
-        generator.close();
-      }
-
-      System.out.println("total processed: " + counter);
-      System.out.println("falseCounter: " + falseCounter);
-      System.out.println("skippedCounter: " + skippedCounter);
-      System.out.println((System.currentTimeMillis() - start) + "msec");
     }
+    return null;
+  }
+
+  @Override
+  protected boolean shouldProcessModel(WikipediaModel model) {
+    return model != null;
+  }
+
+  @Override
+  protected void closeDataSource(Object dataSource) throws Exception {
+    if (dataSource != null) {
+      ((XMLEventReader) dataSource).close();
+    }
+  }
+
+  @Override
+  protected String getTextReportFileName() {
+    return "diff_result.txt";
+  }
+
+  @Override
+  protected String getHtmlReportFileName() {
+    return "diff_result.html";
   }
 
   private static InputStream getInputStream(String xmlPath) throws IOException {
@@ -212,40 +151,6 @@ public class PagesArticlesXmlParser {
     return is;
   }
   
-  private static boolean compareResult(WikipediaModel model, AnalyzeResult[] oldResult, AnalyzeResult[] newResult) {
-    boolean different = false;
-
-    //size check
-    for(int i=0;i<RESULT_SIZE;i++){
-      if(oldResult[i].getTotalCost() != newResult[i].getTotalCost()){
-        different = true;
-      }
-      if(!oldResult[i].getTermList().equals(newResult[i].getTermList())){
-        different = true;
-      }
-      if(!oldResult[i].getPosList().equals(newResult[i].getPosList())){
-        different = true;
-      }
-      break;
-    }
-    return different;
-  }
-
-  private static void printResults(int counter, WikipediaModel model,
-                                    AnalyzeResult[] oldResult, AnalyzeResult[] newResult) {
-    System.out.println("\n=== Record #" + (counter + 1) + " ===");
-    System.out.println("Title: \"" + model.getTitle() + "\"");
-    System.out.println("Text: \"" + model.getText() + "\"");
-    System.out.println("\n[OLD Results]");
-    System.out.println("  Terms: " + oldResult[0].getTermList());
-    System.out.println("  POS: " + oldResult[0].getPosList());
-    System.out.println("  Total Cost: " + oldResult[0].getTotalCost());
-    System.out.println("\n[NEW Results]");
-    System.out.println("  Terms: " + newResult[0].getTermList());
-    System.out.println("  POS: " + newResult[0].getPosList());
-    System.out.println("  Total Cost: " + newResult[0].getTotalCost());
-  }
-
   /** page element内の解析 */
   private static WikipediaModel pageParse(XMLEventReader reader)
       throws Exception {
@@ -320,25 +225,6 @@ public class PagesArticlesXmlParser {
    * ファイルが指定された場合は、そのファイルのみを含む配列を返す
    */
   private static File[] getJarFiles(String path) {
-    File file = new File(path);
-
-    if (file.isDirectory()) {
-      // ディレクトリの場合、.jarファイルのみをフィルタリング
-      File[] jarFiles = file.listFiles((dir, name) -> name.toLowerCase().endsWith(".jar"));
-      if (jarFiles == null || jarFiles.length == 0) {
-        throw new RuntimeException("No JAR files found in directory: " + path);
-      }
-      System.out.println("Found " + jarFiles.length + " JAR file(s) in " + path);
-      for (File jarFile : jarFiles) {
-        System.out.println("  - " + jarFile.getName());
-      }
-      return jarFiles;
-    } else if (file.isFile()) {
-      // ファイルの場合、単一のファイルを含む配列を返す
-      System.out.println("Using JAR file: " + file.getName());
-      return new File[]{file};
-    } else {
-      throw new RuntimeException("Path is neither a file nor a directory: " + path);
-    }
+    return ParserUtils.getJarFiles(path);
   }
 }

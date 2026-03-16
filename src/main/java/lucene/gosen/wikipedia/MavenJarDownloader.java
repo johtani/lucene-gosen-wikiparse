@@ -28,16 +28,18 @@ public class MavenJarDownloader {
 
     public static void main(String[] args) {
         if (args.length < 1) {
-            System.out.println("Usage: java MavenJarDownloader <version> [destination-dir]");
+            System.out.println("Usage: java MavenJarDownloader <version> [destination-dir] [classifier]");
             System.out.println("Example: java MavenJarDownloader 6.2.1 ./lib/6.2.1");
+            System.out.println("Example: java MavenJarDownloader 6.2.1 ./lib/6.2.1 ipadic");
             System.exit(1);
         }
 
         String version = args[0];
         String destDir = args.length > 1 ? args[1] : "./lib/" + version;
+        String classifier = args.length > 2 ? args[2] : "ipadic";
 
         try {
-            downloadLuceneGosenWithDependencies(version, destDir);
+            downloadLuceneGosenWithDependencies(version, destDir, classifier);
             System.out.println("All downloads completed successfully!");
         } catch (Exception e) {
             System.err.println("Error downloading files: " + e.getMessage());
@@ -49,7 +51,7 @@ public class MavenJarDownloader {
     /**
      * lucene-gosenとその依存関係（lucene-core）をダウンロードする
      */
-    public static void downloadLuceneGosenWithDependencies(String version, String destDir) throws Exception {
+    public static void downloadLuceneGosenWithDependencies(String version, String destDir, String classifier) throws Exception {
         Path destPath = Paths.get(destDir);
         if (Files.notExists(destPath)) {
             Files.createDirectories(destPath);
@@ -58,8 +60,9 @@ public class MavenJarDownloader {
 
         // 1. lucene-gosenをダウンロード
         System.out.println("\n=== Downloading lucene-gosen ===");
-        String gosenJarUrl = buildJarUrl(LUCENE_GOSEN_GROUP_ID, LUCENE_GOSEN_ARTIFACT_ID, version);
-        String gosenJarPath = destDir + "/" + LUCENE_GOSEN_ARTIFACT_ID + "-" + version + ".jar";
+        String gosenJarUrl = buildJarUrl(LUCENE_GOSEN_GROUP_ID, LUCENE_GOSEN_ARTIFACT_ID, version, classifier);
+        String gosenJarPath = destDir + "/" + LUCENE_GOSEN_ARTIFACT_ID + "-" + version +
+                (classifier != null ? "-" + classifier : "") + ".jar";
         downloadFile(gosenJarUrl, gosenJarPath);
 
         // 2. POMファイルから依存関係を取得
@@ -69,7 +72,7 @@ public class MavenJarDownloader {
 
         // 3. lucene-coreをダウンロード
         System.out.println("\n=== Downloading lucene-core ===");
-        String coreJarUrl = buildJarUrl(LUCENE_CORE_GROUP_ID, LUCENE_CORE_ARTIFACT_ID, luceneCoreVersion);
+        String coreJarUrl = buildJarUrl(LUCENE_CORE_GROUP_ID, LUCENE_CORE_ARTIFACT_ID, luceneCoreVersion, null);
         String coreJarPath = destDir + "/" + LUCENE_CORE_ARTIFACT_ID + "-" + luceneCoreVersion + ".jar";
         downloadFile(coreJarUrl, coreJarPath);
     }
@@ -77,10 +80,11 @@ public class MavenJarDownloader {
     /**
      * Maven CentralのJAR URLを構築
      */
-    private static String buildJarUrl(String groupId, String artifactId, String version) {
+    private static String buildJarUrl(String groupId, String artifactId, String version, String classifier) {
         String groupPath = groupId.replace('.', '/');
-        return String.format("%s/%s/%s/%s/%s-%s.jar",
-                MAVEN_CENTRAL_BASE, groupPath, artifactId, version, artifactId, version);
+        String jarName = artifactId + "-" + version + (classifier != null ? "-" + classifier : "") + ".jar";
+        return String.format("%s/%s/%s/%s/%s",
+                MAVEN_CENTRAL_BASE, groupPath, artifactId, version, jarName);
     }
 
     /**

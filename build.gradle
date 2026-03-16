@@ -57,7 +57,7 @@ tasks.register('runDownload', JavaExec) {
 tasks.register('runDownloadJars', JavaExec) {
     mainClass = 'lucene.gosen.wikipedia.MavenJarDownloader'
     classpath = sourceSets.main.runtimeClasspath
-    // 引数が必要な場合は --args="version [destination-dir]" で渡せるように設定
+    // 引数が必要な場合は --args="version [destination-dir] [classifier]" で渡せるように設定
 }
 
 tasks.register('runWiki40bDownload', JavaExec) {

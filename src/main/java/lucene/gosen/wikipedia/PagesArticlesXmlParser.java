@@ -15,14 +15,15 @@
  */
 package lucene.gosen.wikipedia;
 
-import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.List;
 
 import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLInputFactory;
@@ -35,6 +36,10 @@ import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 import lucene.gosen.test.util.AnalyzeResult;
 import lucene.gosen.test.util.ComponentContainer;
 import lucene.gosen.wikipedia.analyzer.WikipediaModelAnalyzer;
+import lucene.gosen.wikipedia.report.ExecutionInfo;
+import lucene.gosen.wikipedia.report.HtmlReportGenerator;
+import lucene.gosen.wikipedia.report.ReportGenerator;
+import lucene.gosen.wikipedia.report.TextReportGenerator;
 
 /**
  * Wikipediaのjawiki-latest-pages-articles.xmlを解析する
@@ -51,7 +56,7 @@ public class PagesArticlesXmlParser {
 
     long start = System.currentTimeMillis();
     if (args.length < 2) {
-      System.out.println("arg[0] is old jar or directory, arg[1] is new jar or directory, [arg[2] is wikipedia xml file (default: ./data/jawiki-latest-pages-articles.xml)], [arg[3] is max record count (optional, default: all records)]");
+      System.out.println("arg[0] is old jar or directory, arg[1] is new jar or directory, [arg[2] is wikipedia xml file (default: ./data/jawiki-latest-pages-articles.xml)], [arg[3] is max record count (optional, default: all records)], [arg[4] is report format (text|html|both, default: both)]");
       System.exit(-1);
     }
 
@@ -72,23 +77,56 @@ public class PagesArticlesXmlParser {
       }
     }
 
-    BufferedWriter bw = new BufferedWriter(new FileWriter("diff_result.txt"));
+    // Parse report format
+    String reportFormat = args.length >= 5 ? args[4].toLowerCase() : "both";
+    if (!reportFormat.equals("text") && !reportFormat.equals("html") && !reportFormat.equals("both")) {
+      System.err.println("Error: report format must be 'text', 'html', or 'both', got: " + reportFormat);
+      System.exit(-1);
+    }
+
+    // 実行情報を収集
+    ExecutionInfo execInfo = new ExecutionInfo();
+    execInfo.setOldJarPath(args[0]);
+    execInfo.setNewJarPath(args[1]);
+    execInfo.setXmlPath(xmlPath);
+    execInfo.setMaxRecordCount(maxRecordCount);
+    execInfo.setReportFormat(reportFormat);
+    execInfo.setStartTime(new Date(start));
+
+    // JAR ファイル情報を収集
+    File[] oldJarFiles = getJarFiles(args[0]);
+    File[] newJarFiles = getJarFiles(args[1]);
+    execInfo.setOldJarFiles(Arrays.stream(oldJarFiles).map(File::getName).toList());
+    execInfo.setNewJarFiles(Arrays.stream(newJarFiles).map(File::getName).toList());
+
+    // レポートジェネレーターを初期化
+    List<ReportGenerator> reportGenerators = new ArrayList<>();
+    if (reportFormat.equals("text") || reportFormat.equals("both")) {
+      TextReportGenerator textGen = new TextReportGenerator("diff_result.txt");
+      textGen.setExecutionInfo(execInfo);
+      reportGenerators.add(textGen);
+    }
+    if (reportFormat.equals("html") || reportFormat.equals("both")) {
+      HtmlReportGenerator htmlGen = new HtmlReportGenerator();
+      htmlGen.setExecutionInfo(execInfo);
+      reportGenerators.add(htmlGen);
+    }
 
     System.out.println("start :: "+sdf.format(new Date(start)));
-    ComponentContainer oldJarContainer = new ComponentContainer(getJarFiles(args[0]));
-    ComponentContainer newJarContainer = new ComponentContainer(getJarFiles(args[1]));
+    ComponentContainer oldJarContainer = new ComponentContainer(oldJarFiles);
+    ComponentContainer newJarContainer = new ComponentContainer(newJarFiles);
 
     WikipediaModelAnalyzer oldModelAnalyzer = (WikipediaModelAnalyzer)oldJarContainer.createComponent("lucene.gosen.wikipedia.analyzer.WikipediaModelAnalyzer", null, null);
     WikipediaModelAnalyzer newModelAnalyzer = (WikipediaModelAnalyzer)newJarContainer.createComponent("lucene.gosen.wikipedia.analyzer.WikipediaModelAnalyzer", null, null);
-    
-    
+
+
     AnalyzeResult[] oldResult = new AnalyzeResult[RESULT_SIZE];
     AnalyzeResult[] newResult = new AnalyzeResult[RESULT_SIZE];
     for(int i=0;i<RESULT_SIZE;i++){
       oldResult[i] = new AnalyzeResult();
       newResult[i] = new AnalyzeResult();
     }
-    
+
     XMLInputFactory factory = XMLInputFactory.newInstance();
     try (InputStream is = getInputStream(xmlPath)) {
       XMLEventReader reader = factory.createXMLEventReader(is);
@@ -105,8 +143,14 @@ public class PagesArticlesXmlParser {
             int skipped = oldModelAnalyzer.analyze(model, oldJarContainer, oldResult);
             newModelAnalyzer.analyze(model, newJarContainer, newResult);
             skippedCounter += skipped;
-            if(compareResult(bw, model, oldResult, newResult, printToConsole)){
-              falseCounter++;;
+            boolean hasDifference = compareResult(model, oldResult, newResult);
+            if(hasDifference){
+              falseCounter++;
+            }
+
+            // 各レポートジェネレーターに結果を追加
+            for (ReportGenerator generator : reportGenerators) {
+              generator.addDiffResult(model, oldResult, newResult, hasDifference, printToConsole);
             }
 
             if (printToConsole) {
@@ -115,7 +159,9 @@ public class PagesArticlesXmlParser {
 
             if(counter % 1000 == 0){
               System.out.println("success count:"+counter);
-              bw.flush();
+              for (ReportGenerator generator : reportGenerators) {
+                generator.flush();
+              }
             }
             counter++;
 
@@ -129,7 +175,26 @@ public class PagesArticlesXmlParser {
       }
 
       reader.close();
-      bw.close();
+
+      // 実行情報の最終更新
+      execInfo.setEndTime(new Date());
+      execInfo.setDurationMs(System.currentTimeMillis() - start);
+      execInfo.setTotalProcessed(counter);
+      execInfo.setDifferenceCount(falseCounter);
+      execInfo.setSkippedCount(skippedCounter);
+
+      // レポート生成
+      for (ReportGenerator generator : reportGenerators) {
+        if (generator instanceof TextReportGenerator) {
+          generator.generateReport("diff_result.txt");
+          System.out.println("Text report generated: diff_result.txt");
+        } else if (generator instanceof HtmlReportGenerator) {
+          generator.generateReport("diff_result.html");
+          System.out.println("HTML report generated: diff_result.html");
+        }
+        generator.close();
+      }
+
       System.out.println("total processed: " + counter);
       System.out.println("falseCounter: " + falseCounter);
       System.out.println("skippedCounter: " + skippedCounter);
@@ -147,73 +212,18 @@ public class PagesArticlesXmlParser {
     return is;
   }
   
-  private static boolean compareResult(BufferedWriter bw, WikipediaModel model, AnalyzeResult[] oldResult, AnalyzeResult[] newResult, boolean printToConsole)throws IOException{
-
+  private static boolean compareResult(WikipediaModel model, AnalyzeResult[] oldResult, AnalyzeResult[] newResult) {
     boolean different = false;
 
     //size check
     for(int i=0;i<RESULT_SIZE;i++){
       if(oldResult[i].getTotalCost() != newResult[i].getTotalCost()){
-        String msg = "analyze result[cost] is different!!";
-        bw.append(msg);
-        bw.newLine();
-        if (printToConsole) System.out.println(msg);
-
-        String oldMsg = "  old["+oldResult[i].getTotalCost()+"]";
-        bw.append(oldMsg);
-        bw.newLine();
-        if (printToConsole) System.out.println(oldMsg);
-
-        String newMsg = "  new["+newResult[i].getTotalCost()+"]";
-        bw.append(newMsg);
-        bw.newLine();
-        if (printToConsole) System.out.println(newMsg);
-
         different = true;
       }
-      if(different){
-        if(i==0){
-          bw.append(model.title);
-          if (printToConsole) System.out.println("Title: " + model.title);
-        }else{
-          //System.out.println(model.text);
-        }
-        //System.exit(-1);
-      }
       if(!oldResult[i].getTermList().equals(newResult[i].getTermList())){
-        String msg = "analyze result[termList] is different!!";
-        bw.append(msg);
-        bw.newLine();
-        if (printToConsole) System.out.println(msg);
-
-        String oldMsg = "  old["+oldResult[i].getTermList().toString()+"]";
-        bw.append(oldMsg);
-        bw.newLine();
-        if (printToConsole) System.out.println(oldMsg);
-
-        String newMsg = "  new["+newResult[i].getTermList().toString()+"]";
-        bw.append(newMsg);
-        bw.newLine();
-        if (printToConsole) System.out.println(newMsg);
-
         different = true;
       }
       if(!oldResult[i].getPosList().equals(newResult[i].getPosList())){
-        String msg = "analyze result[posList] is different!!";
-        bw.append(msg);
-        bw.newLine();
-        if (printToConsole) System.out.println(msg);
-
-        String oldMsg = "  old["+oldResult[i].getPosList().toString()+"]";
-        bw.append(oldMsg);
-        bw.newLine();
-        if (printToConsole) System.out.println(oldMsg);
-
-        String newMsg = "  new["+newResult[i].getPosList().toString()+"]";
-        bw.append(newMsg);
-        bw.newLine();
-        if (printToConsole) System.out.println(newMsg);
-
         different = true;
       }
       break;

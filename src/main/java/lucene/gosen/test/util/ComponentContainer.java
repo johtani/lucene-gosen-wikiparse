@@ -52,7 +52,9 @@ public class ComponentContainer {
                     urlClassLoader = new RestrictedURLClassLoader(targetJarUrls, ctxClsLoader);
                 }
             }
-            return urlClassLoader.loadClass(targetClass);
+            @SuppressWarnings("unchecked")
+            Class<? extends Attribute> result = (Class<? extends Attribute>) urlClassLoader.loadClass(targetClass);
+            return result;
         }
         throw new ClassNotFoundException("Not Found " + targetClass);
     }
@@ -66,11 +68,7 @@ public class ComponentContainer {
     }
 
     private URL toUrl(File file) throws MalformedURLException {
-        String filePath = file.getAbsolutePath();
-        filePath = filePath.replace('\\', '/');
-        if (filePath.charAt(0) != '/') filePath = "/" + filePath;
-        if (file.isDirectory()) filePath = filePath + "/";
-        return new URL("file", null, filePath);
+        return file.toURI().toURL();
     }
 
     public Object createComponent(String targetClass, Class<?>[] argTypes, Object[] args) throws ClassNotFoundException {

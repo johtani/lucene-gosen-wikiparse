@@ -27,26 +27,10 @@ public class Wiki40bParquetParser extends AbstractWikipediaParser {
         String parquetPath = args.length >= 3 ? args[2] : "./data/wiki40b-ja/train.parquet";
 
         // Parse max record count with validation
-        int maxRecordCount = -1; // -1 means no limit
-        if (args.length >= 4) {
-            try {
-                maxRecordCount = Integer.parseInt(args[3]);
-                if (maxRecordCount <= 0) {
-                    System.err.println("Error: max record count must be a positive number");
-                    System.exit(-1);
-                }
-            } catch (NumberFormatException e) {
-                System.err.println("Error: arg[3] must be a valid number, got: " + args[3]);
-                System.exit(-1);
-            }
-        }
+        int maxRecordCount = ParserUtils.parseMaxRecordCount(args, 3, -1);
 
         // Parse report format
-        String reportFormat = args.length >= 5 ? args[4].toLowerCase() : "text";
-        if (!reportFormat.equals("text") && !reportFormat.equals("html") && !reportFormat.equals("both")) {
-            System.err.println("Error: report format must be 'text', 'html', or 'both', got: " + reportFormat);
-            System.exit(-1);
-        }
+        String reportFormat = ParserUtils.parseReportFormat(args, 4, "text");
 
         // ParserConfigを構築
         ParserConfig config = ParserConfig.builder()
@@ -119,6 +103,7 @@ public class Wiki40bParquetParser extends AbstractWikipediaParser {
     static class Wiki40bReadSupport extends ReadSupport<WikipediaModel> {
 
         @Override
+        @SuppressWarnings("deprecation")
         public ReadContext init(Configuration configuration, java.util.Map<String, String> keyValueMetaData,
                                 MessageType fileSchema) {
             return new ReadContext(fileSchema);

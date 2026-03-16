@@ -23,8 +23,8 @@ public class RestrictedURLClassLoader extends URLClassLoader {
         super(urls, parent);
     }
 
-    public Class loadClass(String name) throws ClassNotFoundException {
-        Class cls = super.loadClass(name);
+    public Class<?> loadClass(String name) throws ClassNotFoundException {
+        Class<?> cls = super.loadClass(name);
 
         if (cls == null) {
             throw new ClassNotFoundException("Restricted ClassLoader"

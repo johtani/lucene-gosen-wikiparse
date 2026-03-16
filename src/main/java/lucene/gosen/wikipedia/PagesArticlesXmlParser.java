@@ -50,26 +50,10 @@ public class PagesArticlesXmlParser extends AbstractWikipediaParser {
         String xmlPath = args.length >= 3 ? args[2] : "./data/jawiki-latest-pages-articles.xml";
 
         // Parse max record count with validation
-        int maxRecordCount = -1; // -1 means no limit
-        if (args.length >= 4) {
-            try {
-                maxRecordCount = Integer.parseInt(args[3]);
-                if (maxRecordCount <= 0) {
-                    System.err.println("Error: max record count must be a positive number");
-                    System.exit(-1);
-                }
-            } catch (NumberFormatException e) {
-                System.err.println("Error: arg[3] must be a valid number, got: " + args[3]);
-                System.exit(-1);
-            }
-        }
+        int maxRecordCount = ParserUtils.parseMaxRecordCount(args, 3, -1);
 
         // Parse report format
-        String reportFormat = args.length >= 5 ? args[4].toLowerCase() : "both";
-        if (!reportFormat.equals("text") && !reportFormat.equals("html") && !reportFormat.equals("both")) {
-            System.err.println("Error: report format must be 'text', 'html', or 'both', got: " + reportFormat);
-            System.exit(-1);
-        }
+        String reportFormat = ParserUtils.parseReportFormat(args, 4, "both");
 
         // ParserConfigを構築
         ParserConfig config = ParserConfig.builder()

@@ -154,4 +154,46 @@ public class ParserUtils {
         execInfo.setDifferenceCount(falseCounter);
         execInfo.setSkippedCount(skippedCounter);
     }
+
+    /**
+     * コマンドライン引数からmaxRecordCountをパースする
+     *
+     * @param args           コマンドライン引数配列
+     * @param argIndex       解析する引数のインデックス
+     * @param defaultValue   デフォルト値
+     * @return パース済みのmaxRecordCount（-1は無制限を意味する）
+     */
+    public static int parseMaxRecordCount(String[] args, int argIndex, int defaultValue) {
+        int maxRecordCount = defaultValue;
+        if (args.length > argIndex) {
+            try {
+                maxRecordCount = Integer.parseInt(args[argIndex]);
+                if (maxRecordCount <= 0) {
+                    System.err.println("Error: max record count must be a positive number");
+                    System.exit(-1);
+                }
+            } catch (NumberFormatException e) {
+                System.err.println("Error: arg[" + argIndex + "] must be a valid number, got: " + args[argIndex]);
+                System.exit(-1);
+            }
+        }
+        return maxRecordCount;
+    }
+
+    /**
+     * コマンドライン引数からreportFormatをパースする
+     *
+     * @param args           コマンドライン引数配列
+     * @param argIndex       解析する引数のインデックス
+     * @param defaultValue   デフォルト値
+     * @return パース済みのreportFormat（"text", "html", または "both"）
+     */
+    public static String parseReportFormat(String[] args, int argIndex, String defaultValue) {
+        String reportFormat = args.length > argIndex ? args[argIndex].toLowerCase() : defaultValue;
+        if (!reportFormat.equals("text") && !reportFormat.equals("html") && !reportFormat.equals("both")) {
+            System.err.println("Error: report format must be 'text', 'html', or 'both', got: " + reportFormat);
+            System.exit(-1);
+        }
+        return reportFormat;
+    }
 }

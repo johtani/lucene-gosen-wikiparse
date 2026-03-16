@@ -15,12 +15,12 @@
  */
 package lucene.gosen.wikipedia;
 
+import lucene.gosen.test.util.AnalyzeResult;
+import lucene.gosen.wikipedia.report.ExecutionInfo;
+
 import java.io.File;
 import java.util.Arrays;
 import java.util.Date;
-
-import lucene.gosen.test.util.AnalyzeResult;
-import lucene.gosen.wikipedia.report.ExecutionInfo;
 
 /**
  * Wikipedia パーサーで使用する共通ユーティリティメソッド
@@ -59,7 +59,7 @@ public class ParserUtils {
      * 解析結果をコンソールに出力する
      */
     public static void printResults(int counter, WikipediaModel model,
-                                     AnalyzeResult[] oldResult, AnalyzeResult[] newResult) {
+                                    AnalyzeResult[] oldResult, AnalyzeResult[] newResult) {
         System.out.println("\n=== Record #" + (counter + 1) + " ===");
         System.out.println("Title: \"" + model.getTitle() + "\"");
         System.out.println("Text: \"" + model.getText() + "\"");
@@ -86,14 +86,14 @@ public class ParserUtils {
 
     /**
      * 解析結果を比較する
-     * @param model WikipediaModel
-     * @param oldResult 旧バージョンの解析結果
-     * @param newResult 新バージョンの解析結果
+     *
+     * @param oldResult  旧バージョンの解析結果
+     * @param newResult  新バージョンの解析結果
      * @param resultSize 比較する結果のサイズ
      * @return 差分がある場合はtrue
      */
-    public static boolean compareResult(WikipediaModel model, AnalyzeResult[] oldResult,
-                                       AnalyzeResult[] newResult, int resultSize) {
+    public static boolean compareResult(AnalyzeResult[] oldResult,
+                                        AnalyzeResult[] newResult, int resultSize) {
         boolean different = false;
 
         // size check
@@ -114,15 +114,16 @@ public class ParserUtils {
 
     /**
      * ExecutionInfoオブジェクトを構築する
-     * @param config パーサー設定
-     * @param oldJarFiles 旧バージョンのJARファイル配列
-     * @param newJarFiles 新バージョンのJARファイル配列
+     *
+     * @param config         パーサー設定
+     * @param oldJarFiles    旧バージョンのJARファイル配列
+     * @param newJarFiles    新バージョンのJARファイル配列
      * @param dataSourceType データソースタイプ ("XML" または "Parquet")
-     * @param startTime 開始時刻
+     * @param startTime      開始時刻
      * @return ExecutionInfo
      */
     public static ExecutionInfo buildExecutionInfo(ParserConfig config, File[] oldJarFiles,
-                                                    File[] newJarFiles, String dataSourceType, long startTime) {
+                                                   File[] newJarFiles, String dataSourceType, long startTime) {
         ExecutionInfo execInfo = new ExecutionInfo();
         execInfo.setOldJarPath(config.getOldJarPath());
         execInfo.setNewJarPath(config.getNewJarPath());
@@ -138,11 +139,12 @@ public class ParserUtils {
 
     /**
      * ExecutionInfoを最終更新する
-     * @param execInfo ExecutionInfo
-     * @param counter 処理済みカウント
-     * @param falseCounter 差分カウント
+     *
+     * @param execInfo       ExecutionInfo
+     * @param counter        処理済みカウント
+     * @param falseCounter   差分カウント
      * @param skippedCounter スキップカウント
-     * @param startTime 開始時刻
+     * @param startTime      開始時刻
      */
     public static void finalizeExecutionInfo(ExecutionInfo execInfo, int counter, int falseCounter,
                                              int skippedCounter, long startTime) {
@@ -151,5 +153,47 @@ public class ParserUtils {
         execInfo.setTotalProcessed(counter);
         execInfo.setDifferenceCount(falseCounter);
         execInfo.setSkippedCount(skippedCounter);
+    }
+
+    /**
+     * コマンドライン引数からmaxRecordCountをパースする
+     *
+     * @param args           コマンドライン引数配列
+     * @param argIndex       解析する引数のインデックス
+     * @param defaultValue   デフォルト値
+     * @return パース済みのmaxRecordCount（-1は無制限を意味する）
+     */
+    public static int parseMaxRecordCount(String[] args, int argIndex, int defaultValue) {
+        int maxRecordCount = defaultValue;
+        if (args.length > argIndex) {
+            try {
+                maxRecordCount = Integer.parseInt(args[argIndex]);
+                if (maxRecordCount <= 0) {
+                    System.err.println("Error: max record count must be a positive number");
+                    System.exit(-1);
+                }
+            } catch (NumberFormatException e) {
+                System.err.println("Error: arg[" + argIndex + "] must be a valid number, got: " + args[argIndex]);
+                System.exit(-1);
+            }
+        }
+        return maxRecordCount;
+    }
+
+    /**
+     * コマンドライン引数からreportFormatをパースする
+     *
+     * @param args           コマンドライン引数配列
+     * @param argIndex       解析する引数のインデックス
+     * @param defaultValue   デフォルト値
+     * @return パース済みのreportFormat（"text", "html", または "both"）
+     */
+    public static String parseReportFormat(String[] args, int argIndex, String defaultValue) {
+        String reportFormat = args.length > argIndex ? args[argIndex].toLowerCase() : defaultValue;
+        if (!reportFormat.equals("text") && !reportFormat.equals("html") && !reportFormat.equals("both")) {
+            System.err.println("Error: report format must be 'text', 'html', or 'both', got: " + reportFormat);
+            System.exit(-1);
+        }
+        return reportFormat;
     }
 }

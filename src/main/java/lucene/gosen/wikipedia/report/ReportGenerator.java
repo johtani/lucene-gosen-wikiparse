@@ -15,10 +15,10 @@
  */
 package lucene.gosen.wikipedia.report;
 
-import java.io.IOException;
-
 import lucene.gosen.test.util.AnalyzeResult;
 import lucene.gosen.wikipedia.WikipediaModel;
+
+import java.io.IOException;
 
 /**
  * レポート生成のインターフェース
@@ -27,25 +27,28 @@ public interface ReportGenerator {
 
     /**
      * 実行情報を設定
+     *
      * @param info 実行情報
      */
     void setExecutionInfo(ExecutionInfo info);
 
     /**
      * 差分結果を追加
-     * @param model Wikipediaモデル
-     * @param oldResult 旧バージョンの解析結果
-     * @param newResult 新バージョンの解析結果
-     * @param hasDifference 差分があるかどうか
+     *
+     * @param model          Wikipediaモデル
+     * @param oldResult      旧バージョンの解析結果
+     * @param newResult      新バージョンの解析結果
+     * @param hasDifference  差分があるかどうか
      * @param printToConsole コンソールに出力するかどうか
      * @throws IOException IO例外
      */
     void addDiffResult(WikipediaModel model, AnalyzeResult[] oldResult,
-                      AnalyzeResult[] newResult, boolean hasDifference,
-                      boolean printToConsole) throws IOException;
+                       AnalyzeResult[] newResult, boolean hasDifference,
+                       boolean printToConsole) throws IOException;
 
     /**
      * レポートを生成
+     *
      * @param outputPath 出力パス
      * @throws IOException IO例外
      */
@@ -53,12 +56,14 @@ public interface ReportGenerator {
 
     /**
      * 定期的なフラッシュ（大量データ処理時のメモリ対策）
+     *
      * @throws IOException IO例外
      */
     void flush() throws IOException;
 
     /**
      * リソースのクローズ
+     *
      * @throws IOException IO例外
      */
     void close() throws IOException;

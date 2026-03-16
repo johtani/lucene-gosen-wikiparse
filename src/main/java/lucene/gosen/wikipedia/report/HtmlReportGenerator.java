@@ -15,15 +15,15 @@
  */
 package lucene.gosen.wikipedia.report;
 
+import lucene.gosen.test.util.AnalyzeResult;
+import lucene.gosen.wikipedia.WikipediaModel;
+
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
-
-import lucene.gosen.test.util.AnalyzeResult;
-import lucene.gosen.wikipedia.WikipediaModel;
 
 /**
  * HTML形式のレポート生成クラス
@@ -34,7 +34,7 @@ public class HtmlReportGenerator implements ReportGenerator {
     private static final int RESULT_SIZE = 2;
 
     private ExecutionInfo execInfo;
-    private List<DiffRecord> diffRecords = new ArrayList<>();
+    private final List<DiffRecord> diffRecords = new ArrayList<>();
 
     @Override
     public void setExecutionInfo(ExecutionInfo info) {
@@ -43,8 +43,8 @@ public class HtmlReportGenerator implements ReportGenerator {
 
     @Override
     public void addDiffResult(WikipediaModel model, AnalyzeResult[] oldResult,
-                             AnalyzeResult[] newResult, boolean hasDifference,
-                             boolean printToConsole) throws IOException {
+                              AnalyzeResult[] newResult, boolean hasDifference,
+                              boolean printToConsole)  {
         if (!hasDifference) {
             return; // 差分がない場合は記録しない
         }
@@ -89,7 +89,7 @@ public class HtmlReportGenerator implements ReportGenerator {
     }
 
     @Override
-    public void flush() throws IOException {
+    public void flush()  {
         // HTMLは最後にまとめて出力するため、ここでは何もしない
     }
 
@@ -390,7 +390,7 @@ public class HtmlReportGenerator implements ReportGenerator {
     }
 
     @Override
-    public void close() throws IOException {
+    public void close()  {
         // リソースのクリーンアップ（必要に応じて）
     }
 

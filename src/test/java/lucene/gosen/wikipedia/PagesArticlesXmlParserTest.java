@@ -10,24 +10,24 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class PagesArticlesXmlParserTest {
 
     @TempDir
     Path tempDir;
 
-    private static final String DUMMY_XML = 
-        "<mediawiki xmlns=\"http://www.mediawiki.org/xml/export-0.10/\">\n" +
-        "  <page>\n" +
-        "    <title>Test Page</title>\n" +
-        "    <revision>\n" +
-        "      <id>1</id>\n" +
-        "      <timestamp>2023-01-01T00:00:00Z</timestamp>\n" +
-        "      <text>This is a test.</text>\n" +
-        "    </revision>\n" +
-        "  </page>\n" +
-        "</mediawiki>";
+    private static final String DUMMY_XML =
+            """
+                    <mediawiki xmlns="http://www.mediawiki.org/xml/export-0.10/">
+                      <page>
+                        <title>Test Page</title>
+                        <revision>
+                          <id>1</id>
+                          <timestamp>2023-01-01T00:00:00Z</timestamp>
+                          <text>This is a test.</text>
+                        </revision>
+                      </page>
+                    </mediawiki>""";
 
     @Test
     public void testGetInputStreamPlain() throws IOException {

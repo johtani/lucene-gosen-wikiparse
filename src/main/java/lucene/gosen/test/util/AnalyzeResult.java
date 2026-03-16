@@ -19,45 +19,45 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class AnalyzeResult {
-  
-  private int totalCost = 0;
-  private List<String> termList = new ArrayList<String>();
-  private List<String> posList = new ArrayList<String>();
-  
-  public void addPos(String pos){
-    this.posList.add(pos);
-  }
-  
-  public void addTerm(String term){
-    this.termList.add(term);
-  }
-  
-  public void addCost(int cost){
-    this.totalCost+=cost;
-  }
-  
-  public int getTotalCost() {
-    return totalCost;
-  }
 
-  public List<String> getTermList() {
-    return termList;
-  }
+    private int totalCost = 0;
+    private final List<String> termList = new ArrayList<>();
+    private final List<String> posList = new ArrayList<>();
 
-  public List<String> getPosList() {
-    return posList;
-  }
+    public void addPos(String pos) {
+        this.posList.add(pos);
+    }
 
-  @Override
-  public String toString() {
-    return "AnalyzeResult [totalCost=" + totalCost + ", termList=" + termList
-        + ", posList=" + posList + "]";
-  }
-  
-  public void reset(){
-    this.termList.clear();
-    this.posList.clear();
-    this.totalCost = 0;
-  }
+    public void addTerm(String term) {
+        this.termList.add(term);
+    }
+
+    public void addCost(int cost) {
+        this.totalCost += cost;
+    }
+
+    public int getTotalCost() {
+        return totalCost;
+    }
+
+    public List<String> getTermList() {
+        return termList;
+    }
+
+    public List<String> getPosList() {
+        return posList;
+    }
+
+    @Override
+    public String toString() {
+        return "AnalyzeResult [totalCost=" + totalCost + ", termList=" + termList
+                + ", posList=" + posList + "]";
+    }
+
+    public void reset() {
+        this.termList.clear();
+        this.posList.clear();
+        this.totalCost = 0;
+    }
 
 }

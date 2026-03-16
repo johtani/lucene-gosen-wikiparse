@@ -15,13 +15,13 @@
  */
 package lucene.gosen.wikipedia.report;
 
+import lucene.gosen.test.util.AnalyzeResult;
+import lucene.gosen.wikipedia.WikipediaModel;
+
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
-
-import lucene.gosen.test.util.AnalyzeResult;
-import lucene.gosen.wikipedia.WikipediaModel;
 
 /**
  * テキスト形式のレポート生成クラス
@@ -31,7 +31,7 @@ public class TextReportGenerator implements ReportGenerator {
     private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     private static final int RESULT_SIZE = 2;
 
-    private BufferedWriter writer;
+    private final BufferedWriter writer;
     private ExecutionInfo execInfo;
     private boolean headerWritten = false;
 
@@ -46,8 +46,8 @@ public class TextReportGenerator implements ReportGenerator {
 
     @Override
     public void addDiffResult(WikipediaModel model, AnalyzeResult[] oldResult,
-                             AnalyzeResult[] newResult, boolean hasDifference,
-                             boolean printToConsole) throws IOException {
+                              AnalyzeResult[] newResult, boolean hasDifference,
+                              boolean printToConsole) throws IOException {
         // ヘッダーをまだ書いていない場合は書く
         if (!headerWritten && execInfo != null) {
             writeHeader();
@@ -114,7 +114,7 @@ public class TextReportGenerator implements ReportGenerator {
     }
 
     private void compareAndWriteResult(WikipediaModel model, AnalyzeResult[] oldResult,
-                                      AnalyzeResult[] newResult, boolean printToConsole) throws IOException {
+                                       AnalyzeResult[] newResult, boolean printToConsole) throws IOException {
         boolean different = false;
 
         // size check
@@ -142,7 +142,7 @@ public class TextReportGenerator implements ReportGenerator {
                     writer.append(model.getTitle());
                     if (printToConsole) System.out.println("Title: " + model.getTitle());
                 } else {
-                    //System.out.println(model.getText());
+                    System.out.println(model.getText());
                 }
                 //System.exit(-1);
             }
@@ -162,7 +162,6 @@ public class TextReportGenerator implements ReportGenerator {
                 writer.newLine();
                 if (printToConsole) System.out.println(newMsg);
 
-                different = true;
             }
             if (!oldResult[i].getPosList().equals(newResult[i].getPosList())) {
                 String msg = "analyze result[posList] is different!!";
@@ -180,7 +179,6 @@ public class TextReportGenerator implements ReportGenerator {
                 writer.newLine();
                 if (printToConsole) System.out.println(newMsg);
 
-                different = true;
             }
             break;
         }
@@ -188,9 +186,7 @@ public class TextReportGenerator implements ReportGenerator {
 
     @Override
     public void flush() throws IOException {
-        if (writer != null) {
-            writer.flush();
-        }
+        writer.flush();
     }
 
     @Override
@@ -226,8 +222,6 @@ public class TextReportGenerator implements ReportGenerator {
 
     @Override
     public void close() throws IOException {
-        if (writer != null) {
-            writer.close();
-        }
+        writer.close();
     }
 }

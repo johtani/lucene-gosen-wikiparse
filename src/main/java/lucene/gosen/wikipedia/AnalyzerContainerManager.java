@@ -15,10 +15,10 @@
  */
 package lucene.gosen.wikipedia;
 
-import java.io.File;
-
 import lucene.gosen.test.util.ComponentContainer;
 import lucene.gosen.wikipedia.analyzer.WikipediaModelAnalyzer;
+
+import java.io.File;
 
 /**
  * アナライザーコンテナを管理するクラス

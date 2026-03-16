@@ -15,16 +15,16 @@
  */
 package lucene.gosen.wikipedia;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-
 import lucene.gosen.test.util.AnalyzeResult;
 import lucene.gosen.wikipedia.report.ExecutionInfo;
 import lucene.gosen.wikipedia.report.HtmlReportGenerator;
 import lucene.gosen.wikipedia.report.ReportGenerator;
 import lucene.gosen.wikipedia.report.TextReportGenerator;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
 
 /**
  * Wikipediaパーサーの抽象基底クラス
@@ -83,7 +83,7 @@ public abstract class AbstractWikipediaParser {
                     skippedCounter += skipped;
 
                     // 結果比較
-                    boolean hasDifference = ParserUtils.compareResult(model, oldResult, newResult, RESULT_SIZE);
+                    boolean hasDifference = ParserUtils.compareResult(oldResult, newResult, RESULT_SIZE);
                     if (hasDifference) {
                         falseCounter++;
                     }
@@ -181,6 +181,7 @@ public abstract class AbstractWikipediaParser {
 
     /**
      * 次のモデルを読み込む
+     *
      * @return 次のモデル、データが無い場合はnull
      */
     protected abstract WikipediaModel readNextModel(Object dataSource) throws Exception;

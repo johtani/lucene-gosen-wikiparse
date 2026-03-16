@@ -1,5 +1,11 @@
 package lucene.gosen.wikipedia;
 
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.BufferedInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -9,11 +15,6 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.NodeList;
 
 /**
  * Maven CentralからluceneとGosenのJARファイルをダウンロードするクラス
@@ -67,7 +68,7 @@ public class MavenJarDownloader {
 
         // 2. POMファイルから依存関係を取得
         System.out.println("\n=== Fetching dependencies from POM ===");
-        String pomUrl = buildPomUrl(LUCENE_GOSEN_GROUP_ID, LUCENE_GOSEN_ARTIFACT_ID, version);
+        String pomUrl = buildPomUrl(version);
         String luceneCoreVersion = extractLuceneCoreVersion(pomUrl, version);
 
         // 3. lucene-coreをダウンロード
@@ -90,16 +91,16 @@ public class MavenJarDownloader {
     /**
      * Maven CentralのPOM URLを構築
      */
-    private static String buildPomUrl(String groupId, String artifactId, String version) {
-        String groupPath = groupId.replace('.', '/');
+    private static String buildPomUrl(String version) {
+        String groupPath = MavenJarDownloader.LUCENE_GOSEN_GROUP_ID.replace('.', '/');
         return String.format("%s/%s/%s/%s/%s-%s.pom",
-                MAVEN_CENTRAL_BASE, groupPath, artifactId, version, artifactId, version);
+                MAVEN_CENTRAL_BASE, groupPath, MavenJarDownloader.LUCENE_GOSEN_ARTIFACT_ID, version, MavenJarDownloader.LUCENE_GOSEN_ARTIFACT_ID, version);
     }
 
     /**
      * POMファイルからlucene-coreのバージョンを抽出
      */
-    private static String extractLuceneCoreVersion(String pomUrl, String defaultVersion) throws Exception {
+    private static String extractLuceneCoreVersion(String pomUrl, String defaultVersion) {
         System.out.println("Fetching POM from: " + pomUrl);
 
         try {

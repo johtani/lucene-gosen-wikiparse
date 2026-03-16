@@ -1,33 +1,14 @@
 package lucene.gosen.wikipedia;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.util.Date;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.api.ReadSupport;
-import org.apache.parquet.io.api.Binary;
-import org.apache.parquet.io.api.Converter;
-import org.apache.parquet.io.api.GroupConverter;
-import org.apache.parquet.io.api.PrimitiveConverter;
-import org.apache.parquet.io.api.RecordMaterializer;
+import org.apache.parquet.io.api.*;
 import org.apache.parquet.schema.MessageType;
 
-import lucene.gosen.test.util.AnalyzeResult;
-import lucene.gosen.test.util.ComponentContainer;
-import lucene.gosen.wikipedia.analyzer.WikipediaModelAnalyzer;
-import lucene.gosen.wikipedia.report.ExecutionInfo;
-import lucene.gosen.wikipedia.report.HtmlReportGenerator;
-import lucene.gosen.wikipedia.report.ReportGenerator;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Collectors;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
 
 /**
  * Wiki-40B ParquetファイルをパースしてWikipediaModelに変換するクラス
@@ -46,26 +27,10 @@ public class Wiki40bParquetParser extends AbstractWikipediaParser {
         String parquetPath = args.length >= 3 ? args[2] : "./data/wiki40b-ja/train.parquet";
 
         // Parse max record count with validation
-        int maxRecordCount = -1; // -1 means no limit
-        if (args.length >= 4) {
-            try {
-                maxRecordCount = Integer.parseInt(args[3]);
-                if (maxRecordCount <= 0) {
-                    System.err.println("Error: max record count must be a positive number");
-                    System.exit(-1);
-                }
-            } catch (NumberFormatException e) {
-                System.err.println("Error: arg[3] must be a valid number, got: " + args[3]);
-                System.exit(-1);
-            }
-        }
+        int maxRecordCount = ParserUtils.parseMaxRecordCount(args, 3, -1);
 
         // Parse report format
-        String reportFormat = args.length >= 5 ? args[4].toLowerCase() : "text";
-        if (!reportFormat.equals("text") && !reportFormat.equals("html") && !reportFormat.equals("both")) {
-            System.err.println("Error: report format must be 'text', 'html', or 'both', got: " + reportFormat);
-            System.exit(-1);
-        }
+        String reportFormat = ParserUtils.parseReportFormat(args, 4, "text");
 
         // ParserConfigを構築
         ParserConfig config = ParserConfig.builder()
@@ -138,6 +103,7 @@ public class Wiki40bParquetParser extends AbstractWikipediaParser {
     static class Wiki40bReadSupport extends ReadSupport<WikipediaModel> {
 
         @Override
+        @SuppressWarnings("deprecation")
         public ReadContext init(Configuration configuration, java.util.Map<String, String> keyValueMetaData,
                                 MessageType fileSchema) {
             return new ReadContext(fileSchema);
@@ -145,10 +111,10 @@ public class Wiki40bParquetParser extends AbstractWikipediaParser {
 
         @Override
         public RecordMaterializer<WikipediaModel> prepareForRead(Configuration configuration,
-                                                                  java.util.Map<String, String> keyValueMetaData,
-                                                                  MessageType fileSchema,
-                                                                  ReadContext readContext) {
-            return new Wiki40bRecordMaterializer(fileSchema);
+                                                                 java.util.Map<String, String> keyValueMetaData,
+                                                                 MessageType fileSchema,
+                                                                 ReadContext readContext) {
+            return new Wiki40bRecordMaterializer();
         }
     }
 
@@ -158,7 +124,7 @@ public class Wiki40bParquetParser extends AbstractWikipediaParser {
     static class Wiki40bRecordMaterializer extends RecordMaterializer<WikipediaModel> {
         private final Wiki40bGroupConverter root;
 
-        public Wiki40bRecordMaterializer(MessageType schema) {
+        public Wiki40bRecordMaterializer() {
             this.root = new Wiki40bGroupConverter();
         }
 
@@ -224,16 +190,16 @@ public class Wiki40bParquetParser extends AbstractWikipediaParser {
                     String trimmedLine = line.trim();
                     // 空行や特殊マーカーをスキップして、最初の実質的な内容をタイトルとする
                     if (!trimmedLine.isEmpty() &&
-                        !trimmedLine.equals("_START_ARTICLE_") &&
-                        !trimmedLine.startsWith("_START_SECTION_") &&
-                        !trimmedLine.startsWith("_START_PARAGRAPH_")) {
+                            !trimmedLine.equals("_START_ARTICLE_") &&
+                            !trimmedLine.startsWith("_START_SECTION_") &&
+                            !trimmedLine.startsWith("_START_PARAGRAPH_")) {
                         title = trimmedLine;
                         break;
                     }
                 }
 
                 // タイトルが見つからない場合は最初の非空行を使用
-                if (title.isEmpty() && lines.length > 0) {
+                if (title.isEmpty()) {
                     for (String line : lines) {
                         String trimmedLine = line.trim();
                         if (!trimmedLine.isEmpty()) {

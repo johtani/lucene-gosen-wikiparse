@@ -23,7 +23,7 @@ class Wiki40bParquetParserTest {
         // Wiki40bReadSupportクラスが正しくインスタンス化できることを確認
         assertDoesNotThrow(() -> {
             Wiki40bParquetParser.Wiki40bReadSupport readSupport =
-                new Wiki40bParquetParser.Wiki40bReadSupport();
+                    new Wiki40bParquetParser.Wiki40bReadSupport();
             assertNotNull(readSupport);
         });
     }
@@ -33,7 +33,7 @@ class Wiki40bParquetParserTest {
         // Wiki40bGroupConverterクラスが正しくインスタンス化できることを確認
         assertDoesNotThrow(() -> {
             Wiki40bParquetParser.Wiki40bGroupConverter groupConverter =
-                new Wiki40bParquetParser.Wiki40bGroupConverter();
+                    new Wiki40bParquetParser.Wiki40bGroupConverter();
             assertNotNull(groupConverter);
             assertNotNull(groupConverter.getCurrentRecord());
         });
@@ -42,7 +42,7 @@ class Wiki40bParquetParserTest {
     @Test
     void testWiki40bGroupConverterLifecycle() {
         Wiki40bParquetParser.Wiki40bGroupConverter converter =
-            new Wiki40bParquetParser.Wiki40bGroupConverter();
+                new Wiki40bParquetParser.Wiki40bGroupConverter();
 
         // start()を呼び出すと新しいWikipediaModelが作成される
         converter.start();
@@ -56,13 +56,13 @@ class Wiki40bParquetParserTest {
         assertNotSame(model1, model2);
 
         // end()は例外を投げない
-        assertDoesNotThrow(() -> converter.end());
+        assertDoesNotThrow(converter::end);
     }
 
     @Test
     void testConverterGetConverter() {
         Wiki40bParquetParser.Wiki40bGroupConverter converter =
-            new Wiki40bParquetParser.Wiki40bGroupConverter();
+                new Wiki40bParquetParser.Wiki40bGroupConverter();
 
         // 各フィールドインデックスに対してConverterが取得できることを確認
         assertNotNull(converter.getConverter(0)); // wikidata_id
@@ -73,7 +73,7 @@ class Wiki40bParquetParserTest {
     @Test
     void testParsingTitleAndText() {
         Wiki40bParquetParser.Wiki40bGroupConverter converter =
-            new Wiki40bParquetParser.Wiki40bGroupConverter();
+                new Wiki40bParquetParser.Wiki40bGroupConverter();
 
         // テストデータの準備
         String testTitle = "テストタイトル";
@@ -86,11 +86,11 @@ class Wiki40bParquetParserTest {
 
         // wikidata_idをセット（fieldIndex=0）
         ((PrimitiveConverter) converter.getConverter(0)).addBinary(
-            Binary.fromString(testId));
+                Binary.fromString(testId));
 
         // textをセット（fieldIndex=1）
         ((PrimitiveConverter) converter.getConverter(1)).addBinary(
-            Binary.fromString(testText));
+                Binary.fromString(testText));
 
         converter.end();
 
@@ -105,7 +105,7 @@ class Wiki40bParquetParserTest {
     @Test
     void testParsingLongTitle() {
         Wiki40bParquetParser.Wiki40bGroupConverter converter =
-            new Wiki40bParquetParser.Wiki40bGroupConverter();
+                new Wiki40bParquetParser.Wiki40bGroupConverter();
 
         // 100文字を超える長いタイトルをテスト
         String longTitle = "あ".repeat(150);
@@ -114,7 +114,7 @@ class Wiki40bParquetParserTest {
 
         converter.start();
         ((PrimitiveConverter) converter.getConverter(1)).addBinary(
-            Binary.fromString(testText));
+                Binary.fromString(testText));
         converter.end();
 
         WikipediaModel model = converter.getCurrentRecord();
@@ -128,11 +128,11 @@ class Wiki40bParquetParserTest {
     @Test
     void testParsingEmptyText() {
         Wiki40bParquetParser.Wiki40bGroupConverter converter =
-            new Wiki40bParquetParser.Wiki40bGroupConverter();
+                new Wiki40bParquetParser.Wiki40bGroupConverter();
 
         converter.start();
         ((PrimitiveConverter) converter.getConverter(1)).addBinary(
-            Binary.fromString(""));
+                Binary.fromString(""));
         converter.end();
 
         WikipediaModel model = converter.getCurrentRecord();
@@ -157,7 +157,7 @@ class Wiki40bParquetParserTest {
 
         // 最初の3レコードを読み込んでパース結果を検証
         try (ParquetReader<WikipediaModel> reader = ParquetReader.builder(
-                new Wiki40bParquetParser.Wiki40bReadSupport(), path)
+                        new Wiki40bParquetParser.Wiki40bReadSupport(), path)
                 .withConf(conf)
                 .build()) {
 
@@ -186,7 +186,7 @@ class Wiki40bParquetParserTest {
 
                     // タイトルの長さが100文字以下であることを確認
                     assertTrue(model.getTitle().length() <= 100,
-                        "Title length should be <= 100, but was " + model.getTitle().length());
+                            "Title length should be <= 100, but was " + model.getTitle().length());
 
                     recordCount++;
                 } else {

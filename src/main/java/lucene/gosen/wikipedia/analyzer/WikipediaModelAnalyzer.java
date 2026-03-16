@@ -16,7 +16,6 @@
 package lucene.gosen.wikipedia.analyzer;
 
 import java.io.IOException;
-import java.io.Reader;
 import java.io.StringReader;
 import java.lang.reflect.InvocationTargetException;
 
@@ -76,7 +75,7 @@ public class WikipediaModelAnalyzer {
         //TODO getCost execute by reflaction
         result.addCost( Integer.valueOf(costAttr.getClass().getMethod("getCost").invoke(costAttr).toString())  );
         result.addTerm(attr.toString());
-        result.addPos(posAttr.toString());
+        result.addPos(posAttr.getClass().getMethod("getPartOfSpeech").invoke(posAttr).toString());
       }
       tokenizer.close();
     }catch(ClassNotFoundException cnfe){

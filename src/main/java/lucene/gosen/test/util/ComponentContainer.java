@@ -74,7 +74,7 @@ public class ComponentContainer {
   }
   
   /**
-   * TODO 引数にnullが渡せる場合にうまくいかない？コンストラクタ引数のクラス配列は別途与えたほうがいいか？
+   * TODO $B0z?t$K(Bnull$B$,EO$;$k>l9g$K$&$^$/$$$+$J$$!)%3%s%9%H%i%/%?0z?t$N%/%i%9G[Ns$OJLESM?$($?$[$&$,$$$$$+!)(B
    * @param targetClass
    * @param args
    * @return
@@ -87,7 +87,7 @@ public class ComponentContainer {
       Object obj = constructor.newInstance(args);
       return obj;
     }catch(Exception e){
-      throw new RuntimeException("Unable to instantiate target["+targetClass+"]");
+      throw new RuntimeException("Unable to instantiate target["+targetClass+"]", e);
     }
   }
 }

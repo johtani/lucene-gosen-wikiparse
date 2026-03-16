@@ -29,7 +29,7 @@ class MavenJarDownloaderTest {
 
         // Note: 実際のダウンロードは時間がかかるため、無効なバージョンでテスト
         try {
-            MavenJarDownloader.downloadLuceneGosenWithDependencies("0.0.0-invalid", destDir);
+            MavenJarDownloader.downloadLuceneGosenWithDependencies("0.0.0-invalid", destDir, "ipadic");
             fail("Should throw exception for invalid version");
         } catch (Exception e) {
             // 期待される動作: 例外が発生
@@ -44,7 +44,7 @@ class MavenJarDownloaderTest {
         String destDir = tempDir.resolve("test").toString();
 
         assertThrows(Exception.class, () -> {
-            MavenJarDownloader.downloadLuceneGosenWithDependencies(null, destDir);
+            MavenJarDownloader.downloadLuceneGosenWithDependencies(null, destDir, "ipadic");
         });
     }
 
@@ -53,14 +53,14 @@ class MavenJarDownloaderTest {
         String destDir = tempDir.resolve("test").toString();
 
         assertThrows(Exception.class, () -> {
-            MavenJarDownloader.downloadLuceneGosenWithDependencies("", destDir);
+            MavenJarDownloader.downloadLuceneGosenWithDependencies("", destDir, "ipadic");
         });
     }
 
     @Test
     void testDownloadLuceneGosenWithNullDestDir() {
         assertThrows(Exception.class, () -> {
-            MavenJarDownloader.downloadLuceneGosenWithDependencies("6.2.1", null);
+            MavenJarDownloader.downloadLuceneGosenWithDependencies("6.2.1", null, "ipadic");
         });
     }
 
@@ -72,7 +72,7 @@ class MavenJarDownloaderTest {
         assertFalse(Files.exists(Path.of(destDir)));
 
         try {
-            MavenJarDownloader.downloadLuceneGosenWithDependencies("0.0.0-invalid", destDir);
+            MavenJarDownloader.downloadLuceneGosenWithDependencies("0.0.0-invalid", destDir, "ipadic");
             fail("Should throw exception");
         } catch (Exception e) {
             // 複数レベルのディレクトリが作成されていることを確認
@@ -88,7 +88,7 @@ class MavenJarDownloaderTest {
 
         // 既存のディレクトリがある場合でもエラーにならないことを確認
         try {
-            MavenJarDownloader.downloadLuceneGosenWithDependencies("0.0.0-invalid", destDir.toString());
+            MavenJarDownloader.downloadLuceneGosenWithDependencies("0.0.0-invalid", destDir.toString(), "ipadic");
             fail("Should throw exception for invalid version");
         } catch (Exception e) {
             // ディレクトリは残っている
@@ -103,7 +103,7 @@ class MavenJarDownloaderTest {
 
         // 無効なバージョン形式
         assertThrows(Exception.class, () -> {
-            MavenJarDownloader.downloadLuceneGosenWithDependencies("invalid-version-format", destDir);
+            MavenJarDownloader.downloadLuceneGosenWithDependencies("invalid-version-format", destDir, "ipadic");
         });
     }
 

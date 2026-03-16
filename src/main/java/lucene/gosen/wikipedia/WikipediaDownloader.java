@@ -45,7 +45,7 @@ public class WikipediaDownloader {
         URL url = URI.create(urlString).toURL();
         try (InputStream in = new BufferedInputStream(url.openStream());
              FileOutputStream out = new FileOutputStream(destPath.toFile())) {
-            
+
             byte[] dataBuffer = new byte[65536]; // 64KB buffer
             int bytesRead;
             long totalBytesRead = 0;
@@ -54,7 +54,7 @@ public class WikipediaDownloader {
             while ((bytesRead = in.read(dataBuffer)) != -1) {
                 out.write(dataBuffer, 0, bytesRead);
                 totalBytesRead += bytesRead;
-                
+
                 long currentTime = System.currentTimeMillis();
                 if (currentTime - lastReportedTime > 5000) { // 5秒ごとに進捗表示
                     System.out.printf("Downloaded: %.2f MB%n", totalBytesRead / (1024.0 * 1024.0));

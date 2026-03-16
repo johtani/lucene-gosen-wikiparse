@@ -34,7 +34,7 @@ public class HtmlReportGenerator implements ReportGenerator {
     private static final int RESULT_SIZE = 2;
 
     private ExecutionInfo execInfo;
-    private List<DiffRecord> diffRecords = new ArrayList<>();
+    private final List<DiffRecord> diffRecords = new ArrayList<>();
 
     @Override
     public void setExecutionInfo(ExecutionInfo info) {
@@ -43,8 +43,8 @@ public class HtmlReportGenerator implements ReportGenerator {
 
     @Override
     public void addDiffResult(WikipediaModel model, AnalyzeResult[] oldResult,
-                             AnalyzeResult[] newResult, boolean hasDifference,
-                             boolean printToConsole) throws IOException {
+                              AnalyzeResult[] newResult, boolean hasDifference,
+                              boolean printToConsole) throws IOException {
         if (!hasDifference) {
             return; // 差分がない場合は記録しない
         }

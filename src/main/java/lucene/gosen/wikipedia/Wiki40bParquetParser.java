@@ -126,9 +126,9 @@ public class Wiki40bParquetParser extends AbstractWikipediaParser {
 
         @Override
         public RecordMaterializer<WikipediaModel> prepareForRead(Configuration configuration,
-                                                                  java.util.Map<String, String> keyValueMetaData,
-                                                                  MessageType fileSchema,
-                                                                  ReadContext readContext) {
+                                                                 java.util.Map<String, String> keyValueMetaData,
+                                                                 MessageType fileSchema,
+                                                                 ReadContext readContext) {
             return new Wiki40bRecordMaterializer(fileSchema);
         }
     }
@@ -205,16 +205,16 @@ public class Wiki40bParquetParser extends AbstractWikipediaParser {
                     String trimmedLine = line.trim();
                     // 空行や特殊マーカーをスキップして、最初の実質的な内容をタイトルとする
                     if (!trimmedLine.isEmpty() &&
-                        !trimmedLine.equals("_START_ARTICLE_") &&
-                        !trimmedLine.startsWith("_START_SECTION_") &&
-                        !trimmedLine.startsWith("_START_PARAGRAPH_")) {
+                            !trimmedLine.equals("_START_ARTICLE_") &&
+                            !trimmedLine.startsWith("_START_SECTION_") &&
+                            !trimmedLine.startsWith("_START_PARAGRAPH_")) {
                         title = trimmedLine;
                         break;
                     }
                 }
 
                 // タイトルが見つからない場合は最初の非空行を使用
-                if (title.isEmpty() && lines.length > 0) {
+                if (title.isEmpty()) {
                     for (String line : lines) {
                         String trimmedLine = line.trim();
                         if (!trimmedLine.isEmpty()) {

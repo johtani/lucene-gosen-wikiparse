@@ -31,7 +31,7 @@ public class TextReportGenerator implements ReportGenerator {
     private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     private static final int RESULT_SIZE = 2;
 
-    private BufferedWriter writer;
+    private final BufferedWriter writer;
     private ExecutionInfo execInfo;
     private boolean headerWritten = false;
 
@@ -46,8 +46,8 @@ public class TextReportGenerator implements ReportGenerator {
 
     @Override
     public void addDiffResult(WikipediaModel model, AnalyzeResult[] oldResult,
-                             AnalyzeResult[] newResult, boolean hasDifference,
-                             boolean printToConsole) throws IOException {
+                              AnalyzeResult[] newResult, boolean hasDifference,
+                              boolean printToConsole) throws IOException {
         // ヘッダーをまだ書いていない場合は書く
         if (!headerWritten && execInfo != null) {
             writeHeader();
@@ -114,7 +114,7 @@ public class TextReportGenerator implements ReportGenerator {
     }
 
     private void compareAndWriteResult(WikipediaModel model, AnalyzeResult[] oldResult,
-                                      AnalyzeResult[] newResult, boolean printToConsole) throws IOException {
+                                       AnalyzeResult[] newResult, boolean printToConsole) throws IOException {
         boolean different = false;
 
         // size check

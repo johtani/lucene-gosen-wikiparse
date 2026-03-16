@@ -59,7 +59,7 @@ public class ParserUtils {
      * 解析結果をコンソールに出力する
      */
     public static void printResults(int counter, WikipediaModel model,
-                                     AnalyzeResult[] oldResult, AnalyzeResult[] newResult) {
+                                    AnalyzeResult[] oldResult, AnalyzeResult[] newResult) {
         System.out.println("\n=== Record #" + (counter + 1) + " ===");
         System.out.println("Title: \"" + model.getTitle() + "\"");
         System.out.println("Text: \"" + model.getText() + "\"");
@@ -86,14 +86,15 @@ public class ParserUtils {
 
     /**
      * 解析結果を比較する
-     * @param model WikipediaModel
-     * @param oldResult 旧バージョンの解析結果
-     * @param newResult 新バージョンの解析結果
+     *
+     * @param model      WikipediaModel
+     * @param oldResult  旧バージョンの解析結果
+     * @param newResult  新バージョンの解析結果
      * @param resultSize 比較する結果のサイズ
      * @return 差分がある場合はtrue
      */
     public static boolean compareResult(WikipediaModel model, AnalyzeResult[] oldResult,
-                                       AnalyzeResult[] newResult, int resultSize) {
+                                        AnalyzeResult[] newResult, int resultSize) {
         boolean different = false;
 
         // size check
@@ -114,15 +115,16 @@ public class ParserUtils {
 
     /**
      * ExecutionInfoオブジェクトを構築する
-     * @param config パーサー設定
-     * @param oldJarFiles 旧バージョンのJARファイル配列
-     * @param newJarFiles 新バージョンのJARファイル配列
+     *
+     * @param config         パーサー設定
+     * @param oldJarFiles    旧バージョンのJARファイル配列
+     * @param newJarFiles    新バージョンのJARファイル配列
      * @param dataSourceType データソースタイプ ("XML" または "Parquet")
-     * @param startTime 開始時刻
+     * @param startTime      開始時刻
      * @return ExecutionInfo
      */
     public static ExecutionInfo buildExecutionInfo(ParserConfig config, File[] oldJarFiles,
-                                                    File[] newJarFiles, String dataSourceType, long startTime) {
+                                                   File[] newJarFiles, String dataSourceType, long startTime) {
         ExecutionInfo execInfo = new ExecutionInfo();
         execInfo.setOldJarPath(config.getOldJarPath());
         execInfo.setNewJarPath(config.getNewJarPath());
@@ -138,11 +140,12 @@ public class ParserUtils {
 
     /**
      * ExecutionInfoを最終更新する
-     * @param execInfo ExecutionInfo
-     * @param counter 処理済みカウント
-     * @param falseCounter 差分カウント
+     *
+     * @param execInfo       ExecutionInfo
+     * @param counter        処理済みカウント
+     * @param falseCounter   差分カウント
      * @param skippedCounter スキップカウント
-     * @param startTime 開始時刻
+     * @param startTime      開始時刻
      */
     public static void finalizeExecutionInfo(ExecutionInfo execInfo, int counter, int falseCounter,
                                              int skippedCounter, long startTime) {

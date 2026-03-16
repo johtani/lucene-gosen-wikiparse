@@ -181,6 +181,7 @@ public abstract class AbstractWikipediaParser {
 
     /**
      * 次のモデルを読み込む
+     *
      * @return 次のモデル、データが無い場合はnull
      */
     protected abstract WikipediaModel readNextModel(Object dataSource) throws Exception;

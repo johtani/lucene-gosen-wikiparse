@@ -401,9 +401,34 @@ public class Wiki40bParquetParser {
 
         private void extractTitleFromText(String text) {
             if (text != null && !text.isEmpty()) {
-                // テキストの最初の行または最初の100文字をタイトルとして使用
-                String[] lines = text.split("\n", 2);
-                String title = lines[0].trim();
+                // テキストの各行を確認して、最初の空でない行をタイトルとして使用
+                String[] lines = text.split("\n");
+                String title = "";
+
+                for (String line : lines) {
+                    String trimmedLine = line.trim();
+                    // 空行や特殊マーカーをスキップして、最初の実質的な内容をタイトルとする
+                    if (!trimmedLine.isEmpty() &&
+                        !trimmedLine.equals("_START_ARTICLE_") &&
+                        !trimmedLine.startsWith("_START_SECTION_") &&
+                        !trimmedLine.startsWith("_START_PARAGRAPH_")) {
+                        title = trimmedLine;
+                        break;
+                    }
+                }
+
+                // タイトルが見つからない場合は最初の非空行を使用
+                if (title.isEmpty() && lines.length > 0) {
+                    for (String line : lines) {
+                        String trimmedLine = line.trim();
+                        if (!trimmedLine.isEmpty()) {
+                            title = trimmedLine;
+                            break;
+                        }
+                    }
+                }
+
+                // タイトルが100文字を超える場合は切り詰める
                 if (title.length() > 100) {
                     title = title.substring(0, 100);
                 }

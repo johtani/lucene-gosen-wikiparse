@@ -129,7 +129,7 @@ public class Wiki40bParquetParser extends AbstractWikipediaParser {
                                                                  java.util.Map<String, String> keyValueMetaData,
                                                                  MessageType fileSchema,
                                                                  ReadContext readContext) {
-            return new Wiki40bRecordMaterializer(fileSchema);
+            return new Wiki40bRecordMaterializer();
         }
     }
 
@@ -139,7 +139,7 @@ public class Wiki40bParquetParser extends AbstractWikipediaParser {
     static class Wiki40bRecordMaterializer extends RecordMaterializer<WikipediaModel> {
         private final Wiki40bGroupConverter root;
 
-        public Wiki40bRecordMaterializer(MessageType schema) {
+        public Wiki40bRecordMaterializer() {
             this.root = new Wiki40bGroupConverter();
         }
 

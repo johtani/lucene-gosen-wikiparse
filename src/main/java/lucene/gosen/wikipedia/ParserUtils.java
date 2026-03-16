@@ -87,13 +87,12 @@ public class ParserUtils {
     /**
      * 解析結果を比較する
      *
-     * @param model      WikipediaModel
      * @param oldResult  旧バージョンの解析結果
      * @param newResult  新バージョンの解析結果
      * @param resultSize 比較する結果のサイズ
      * @return 差分がある場合はtrue
      */
-    public static boolean compareResult(WikipediaModel model, AnalyzeResult[] oldResult,
+    public static boolean compareResult(AnalyzeResult[] oldResult,
                                         AnalyzeResult[] newResult, int resultSize) {
         boolean different = false;
 

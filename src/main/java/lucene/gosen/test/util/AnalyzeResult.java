@@ -21,8 +21,8 @@ import java.util.List;
 public class AnalyzeResult {
 
     private int totalCost = 0;
-    private final List<String> termList = new ArrayList<String>();
-    private final List<String> posList = new ArrayList<String>();
+    private final List<String> termList = new ArrayList<>();
+    private final List<String> posList = new ArrayList<>();
 
     public void addPos(String pos) {
         this.posList.add(pos);

@@ -83,7 +83,7 @@ public abstract class AbstractWikipediaParser {
                     skippedCounter += skipped;
 
                     // 結果比較
-                    boolean hasDifference = ParserUtils.compareResult(model, oldResult, newResult, RESULT_SIZE);
+                    boolean hasDifference = ParserUtils.compareResult(oldResult, newResult, RESULT_SIZE);
                     if (hasDifference) {
                         falseCounter++;
                     }

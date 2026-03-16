@@ -44,7 +44,7 @@ public class HtmlReportGenerator implements ReportGenerator {
     @Override
     public void addDiffResult(WikipediaModel model, AnalyzeResult[] oldResult,
                               AnalyzeResult[] newResult, boolean hasDifference,
-                              boolean printToConsole) throws IOException {
+                              boolean printToConsole)  {
         if (!hasDifference) {
             return; // 差分がない場合は記録しない
         }
@@ -89,7 +89,7 @@ public class HtmlReportGenerator implements ReportGenerator {
     }
 
     @Override
-    public void flush() throws IOException {
+    public void flush()  {
         // HTMLは最後にまとめて出力するため、ここでは何もしない
     }
 
@@ -390,7 +390,7 @@ public class HtmlReportGenerator implements ReportGenerator {
     }
 
     @Override
-    public void close() throws IOException {
+    public void close()  {
         // リソースのクリーンアップ（必要に応じて）
     }
 

@@ -142,7 +142,7 @@ public class TextReportGenerator implements ReportGenerator {
                     writer.append(model.getTitle());
                     if (printToConsole) System.out.println("Title: " + model.getTitle());
                 } else {
-                    //System.out.println(model.getText());
+                    System.out.println(model.getText());
                 }
                 //System.exit(-1);
             }
@@ -162,7 +162,6 @@ public class TextReportGenerator implements ReportGenerator {
                 writer.newLine();
                 if (printToConsole) System.out.println(newMsg);
 
-                different = true;
             }
             if (!oldResult[i].getPosList().equals(newResult[i].getPosList())) {
                 String msg = "analyze result[posList] is different!!";
@@ -180,7 +179,6 @@ public class TextReportGenerator implements ReportGenerator {
                 writer.newLine();
                 if (printToConsole) System.out.println(newMsg);
 
-                different = true;
             }
             break;
         }
@@ -188,9 +186,7 @@ public class TextReportGenerator implements ReportGenerator {
 
     @Override
     public void flush() throws IOException {
-        if (writer != null) {
-            writer.flush();
-        }
+        writer.flush();
     }
 
     @Override
@@ -226,8 +222,6 @@ public class TextReportGenerator implements ReportGenerator {
 
     @Override
     public void close() throws IOException {
-        if (writer != null) {
-            writer.close();
-        }
+        writer.close();
     }
 }

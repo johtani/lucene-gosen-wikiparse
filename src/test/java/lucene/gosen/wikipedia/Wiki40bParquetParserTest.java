@@ -56,7 +56,7 @@ class Wiki40bParquetParserTest {
         assertNotSame(model1, model2);
 
         // end()は例外を投げない
-        assertDoesNotThrow(() -> converter.end());
+        assertDoesNotThrow(converter::end);
     }
 
     @Test

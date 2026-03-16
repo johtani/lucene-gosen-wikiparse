@@ -73,13 +73,6 @@ public class ComponentContainer {
         return new URL("file", null, filePath);
     }
 
-    /**
-     * TODO 引数にnullが渡せる場合にうまくいかない？コンストラクタ引数のクラス配列は別途与えたほうがいいか？
-     *
-     * @param targetClass
-     * @param args
-     * @return
-     */
     public Object createComponent(String targetClass, Class<?>[] argTypes, Object[] args) throws ClassNotFoundException {
         Class<?> cls = loadComponent(targetClass);
 

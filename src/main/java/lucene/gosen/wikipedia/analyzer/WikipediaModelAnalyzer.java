@@ -29,16 +29,6 @@ import java.lang.reflect.InvocationTargetException;
 
 public class WikipediaModelAnalyzer {
 
-    private final String dictionaryDir;
-
-    public WikipediaModelAnalyzer() {
-        this.dictionaryDir = null;
-    }
-
-    public WikipediaModelAnalyzer(String dictionaryDir) {
-        this.dictionaryDir = dictionaryDir;
-    }
-
     public int analyze(WikipediaModel model, ComponentContainer container, AnalyzeResult[] result) throws Exception {
         boolean titleSkipped = analyze(container, model.getTitle(), result[0]);
         boolean textSkipped = analyze(container, model.getText(), result[1]);
@@ -64,7 +54,7 @@ public class WikipediaModelAnalyzer {
             // GosenTokenizer requires: StreamFilter filter, String dictionaryDir, boolean tokenizeUnknownKatakana
             Tokenizer tokenizer = (Tokenizer) container.createComponent("org.apache.lucene.analysis.gosen.GosenTokenizer",
                     new Class[]{streamFilterClass, String.class, boolean.class},
-                    new Object[]{null, dictionaryDir, false});
+                    new Object[]{null, null, false});
             tokenizer.setReader(reader);
             tokenizer.reset();
             CharTermAttribute attr = tokenizer.getAttribute(CharTermAttribute.class);
@@ -72,7 +62,7 @@ public class WikipediaModelAnalyzer {
             Attribute costAttr = tokenizer.getAttribute(container.loadComponent("org.apache.lucene.analysis.gosen.tokenAttributes.CostAttribute"));
             while (tokenizer.incrementToken()) {
                 //TODO getCost execute by reflaction
-                result.addCost(Integer.valueOf(costAttr.getClass().getMethod("getCost").invoke(costAttr).toString()));
+                result.addCost(Integer.parseInt(costAttr.getClass().getMethod("getCost").invoke(costAttr).toString()));
                 result.addTerm(attr.toString());
                 result.addPos(posAttr.getClass().getMethod("getPartOfSpeech").invoke(posAttr).toString());
             }

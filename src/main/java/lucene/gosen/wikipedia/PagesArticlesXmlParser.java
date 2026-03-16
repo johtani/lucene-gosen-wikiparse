@@ -15,31 +15,18 @@
  */
 package lucene.gosen.wikipedia;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
+import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream;
+import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 
 import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.events.XMLEvent;
-
-import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream;
-import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
-
-import lucene.gosen.test.util.AnalyzeResult;
-import lucene.gosen.test.util.ComponentContainer;
-import lucene.gosen.wikipedia.analyzer.WikipediaModelAnalyzer;
-import lucene.gosen.wikipedia.report.ExecutionInfo;
-import lucene.gosen.wikipedia.report.HtmlReportGenerator;
-import lucene.gosen.wikipedia.report.ReportGenerator;
-import lucene.gosen.wikipedia.report.TextReportGenerator;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.text.SimpleDateFormat;
 
 /**
  * Wikipediaのjawiki-latest-pages-articles.xmlを解析する

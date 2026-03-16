@@ -15,13 +15,13 @@
  */
 package lucene.gosen.wikipedia.report;
 
+import lucene.gosen.test.util.AnalyzeResult;
+import lucene.gosen.wikipedia.WikipediaModel;
+
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
-
-import lucene.gosen.test.util.AnalyzeResult;
-import lucene.gosen.wikipedia.WikipediaModel;
 
 /**
  * テキスト形式のレポート生成クラス

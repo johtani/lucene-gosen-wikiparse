@@ -15,10 +15,10 @@
  */
 package lucene.gosen.wikipedia.report;
 
-import java.io.IOException;
-
 import lucene.gosen.test.util.AnalyzeResult;
 import lucene.gosen.wikipedia.WikipediaModel;
+
+import java.io.IOException;
 
 /**
  * レポート生成のインターフェース

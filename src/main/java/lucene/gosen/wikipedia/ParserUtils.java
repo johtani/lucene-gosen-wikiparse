@@ -15,12 +15,12 @@
  */
 package lucene.gosen.wikipedia;
 
+import lucene.gosen.test.util.AnalyzeResult;
+import lucene.gosen.wikipedia.report.ExecutionInfo;
+
 import java.io.File;
 import java.util.Arrays;
 import java.util.Date;
-
-import lucene.gosen.test.util.AnalyzeResult;
-import lucene.gosen.wikipedia.report.ExecutionInfo;
 
 /**
  * Wikipedia パーサーで使用する共通ユーティリティメソッド

@@ -15,17 +15,16 @@
  */
 package lucene.gosen.wikipedia.analyzer;
 
-import java.io.IOException;
-import java.io.StringReader;
-import java.lang.reflect.InvocationTargetException;
-
 import lucene.gosen.test.util.AnalyzeResult;
 import lucene.gosen.test.util.ComponentContainer;
 import lucene.gosen.wikipedia.WikipediaModel;
-
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.util.Attribute;
+
+import java.io.IOException;
+import java.io.StringReader;
+import java.lang.reflect.InvocationTargetException;
 
 
 public class WikipediaModelAnalyzer {

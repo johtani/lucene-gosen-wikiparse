@@ -1,33 +1,14 @@
 package lucene.gosen.wikipedia;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.util.Date;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.api.ReadSupport;
-import org.apache.parquet.io.api.Binary;
-import org.apache.parquet.io.api.Converter;
-import org.apache.parquet.io.api.GroupConverter;
-import org.apache.parquet.io.api.PrimitiveConverter;
-import org.apache.parquet.io.api.RecordMaterializer;
+import org.apache.parquet.io.api.*;
 import org.apache.parquet.schema.MessageType;
 
-import lucene.gosen.test.util.AnalyzeResult;
-import lucene.gosen.test.util.ComponentContainer;
-import lucene.gosen.wikipedia.analyzer.WikipediaModelAnalyzer;
-import lucene.gosen.wikipedia.report.ExecutionInfo;
-import lucene.gosen.wikipedia.report.HtmlReportGenerator;
-import lucene.gosen.wikipedia.report.ReportGenerator;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Collectors;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
 
 /**
  * Wiki-40B ParquetファイルをパースしてWikipediaModelに変換するクラス

@@ -15,16 +15,16 @@
  */
 package lucene.gosen.wikipedia;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-
 import lucene.gosen.test.util.AnalyzeResult;
 import lucene.gosen.wikipedia.report.ExecutionInfo;
 import lucene.gosen.wikipedia.report.HtmlReportGenerator;
 import lucene.gosen.wikipedia.report.ReportGenerator;
 import lucene.gosen.wikipedia.report.TextReportGenerator;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
 
 /**
  * Wikipediaパーサーの抽象基底クラス

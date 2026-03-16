@@ -37,3 +37,5 @@ diff_result.txt
 !gradle/wrapper/gradle-wrapper.jar
 
 data/*
+/diff_result.html
+/diff_result_wiki40b.html

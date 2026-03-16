@@ -32,14 +32,14 @@ import java.util.stream.Collectors;
 /**
  * Wiki-40B ParquetファイルをパースしてWikipediaModelに変換するクラス
  */
-public class Wiki40bParquetParser {
+public class Wiki40bParquetParser extends AbstractWikipediaParser {
 
-    public static final int RESULT_SIZE = 2;
+    private ParquetReader<WikipediaModel> parquetReader;
+    private BufferedWriter bufferedWriter;
 
     public static void main(String[] args) throws Exception {
-        long start = System.currentTimeMillis();
         if (args.length < 2) {
-            System.out.println("arg[0] is old jar or directory, arg[1] is new jar or directory, [arg[2] is parquet file (default: ./data/wiki40b-ja/train.parquet)], [arg[3] is max record count (optional, default: all records)], [arg[4] is report format (txt or html, default: txt)]");
+            System.out.println("arg[0] is old jar or directory, arg[1] is new jar or directory, [arg[2] is parquet file (default: ./data/wiki40b-ja/train.parquet)], [arg[3] is max record count (optional, default: all records)], [arg[4] is report format (text|html|both, default: text)]");
             System.exit(-1);
         }
 
@@ -61,260 +61,75 @@ public class Wiki40bParquetParser {
         }
 
         // Parse report format
-        String reportFormat = args.length >= 5 ? args[4].toLowerCase() : "txt";
-        if (!reportFormat.equals("txt") && !reportFormat.equals("html")) {
-            System.err.println("Error: report format must be 'txt' or 'html', got: " + reportFormat);
+        String reportFormat = args.length >= 5 ? args[4].toLowerCase() : "text";
+        if (!reportFormat.equals("text") && !reportFormat.equals("html") && !reportFormat.equals("both")) {
+            System.err.println("Error: report format must be 'text', 'html', or 'both', got: " + reportFormat);
             System.exit(-1);
         }
 
-        // レポート生成の準備
-        ExecutionInfo execInfo = new ExecutionInfo();
-        execInfo.setOldJarPath(args[0]);
-        execInfo.setNewJarPath(args[1]);
-        execInfo.setDataSourcePath(parquetPath);
-        execInfo.setDataSourceType("Parquet");
-        execInfo.setMaxRecordCount(maxRecordCount);
-        execInfo.setReportFormat(reportFormat);
-        execInfo.setStartTime(new Date(start));
+        // ParserConfigを構築
+        ParserConfig config = ParserConfig.builder()
+                .oldJarPath(args[0])
+                .newJarPath(args[1])
+                .inputPath(parquetPath)
+                .maxRecordCount(maxRecordCount)
+                .reportFormat(reportFormat)
+                .build();
 
-        ReportGenerator reportGenerator = null;
-        BufferedWriter bw = null;
+        // パーサーを実行
+        Wiki40bParquetParser parser = new Wiki40bParquetParser();
+        parser.execute(config);
+    }
 
-        if ("html".equals(reportFormat)) {
-            reportGenerator = new HtmlReportGenerator();
-            reportGenerator.setExecutionInfo(execInfo);
-        } else {
-            bw = new BufferedWriter(new FileWriter("diff_result_wiki40b.txt"));
-        }
+    @Override
+    protected String getDataSourceType() {
+        return "Parquet";
+    }
 
-        System.out.println("start :: " + new Date(start));
-        File[] oldJarFilesArray = getJarFiles(args[0]);
-        File[] newJarFilesArray = getJarFiles(args[1]);
-
-        // JAR情報をExecutionInfoに設定
-        execInfo.setOldJarFiles(Arrays.stream(oldJarFilesArray).map(File::getName).collect(Collectors.toList()));
-        execInfo.setNewJarFiles(Arrays.stream(newJarFilesArray).map(File::getName).collect(Collectors.toList()));
-
-        ComponentContainer oldJarContainer = new ComponentContainer(oldJarFilesArray);
-        ComponentContainer newJarContainer = new ComponentContainer(newJarFilesArray);
-
-        WikipediaModelAnalyzer oldModelAnalyzer = (WikipediaModelAnalyzer) oldJarContainer.createComponent(
-                "lucene.gosen.wikipedia.analyzer.WikipediaModelAnalyzer", null, null);
-        WikipediaModelAnalyzer newModelAnalyzer = (WikipediaModelAnalyzer) newJarContainer.createComponent(
-                "lucene.gosen.wikipedia.analyzer.WikipediaModelAnalyzer", null, null);
-
-        AnalyzeResult[] oldResult = new AnalyzeResult[RESULT_SIZE];
-        AnalyzeResult[] newResult = new AnalyzeResult[RESULT_SIZE];
-        for (int i = 0; i < RESULT_SIZE; i++) {
-            oldResult[i] = new AnalyzeResult();
-            newResult[i] = new AnalyzeResult();
-        }
-
+    @Override
+    protected Object initializeDataSource(ParserConfig config) throws Exception {
         Configuration conf = new Configuration();
-        Path path = new Path(parquetPath);
-
-        try (ParquetReader<WikipediaModel> reader = ParquetReader.builder(new Wiki40bReadSupport(), path)
+        Path path = new Path(config.getInputPath());
+        parquetReader = ParquetReader.builder(new Wiki40bReadSupport(), path)
                 .withConf(conf)
-                .build()) {
+                .build();
 
-            int counter = 0;
-            int falseCounter = 0;
-            int skippedCounter = 0;
-            WikipediaModel model;
-            boolean printToConsole = (maxRecordCount > 0 && maxRecordCount <= 10);
+        // テキストレポート用のBufferedWriterを初期化（互換性のため）
+        if (config.getReportFormat().equals("text") || config.getReportFormat().equals("both")) {
+            bufferedWriter = new BufferedWriter(new FileWriter("diff_result_wiki40b.txt"));
+        }
 
-            while ((model = reader.read()) != null) {
-                if (model.getText() != null && !model.getText().isEmpty()) {
-                    int skipped = oldModelAnalyzer.analyze(model, oldJarContainer, oldResult);
-                    newModelAnalyzer.analyze(model, newJarContainer, newResult);
-                    skippedCounter += skipped;
+        return parquetReader;
+    }
 
-                    boolean hasDifference = false;
-                    if (reportGenerator != null) {
-                        hasDifference = compareResult(null, model, oldResult, newResult, printToConsole);
-                        reportGenerator.addDiffResult(model, oldResult, newResult, hasDifference, printToConsole);
-                    } else {
-                        hasDifference = compareResult(bw, model, oldResult, newResult, printToConsole);
-                    }
+    @Override
+    protected WikipediaModel readNextModel(Object dataSource) throws Exception {
+        return parquetReader.read();
+    }
 
-                    if (hasDifference) {
-                        falseCounter++;
-                    }
+    @Override
+    protected boolean shouldProcessModel(WikipediaModel model) {
+        return model != null && model.getText() != null && !model.getText().isEmpty();
+    }
 
-                    if (printToConsole) {
-                        printResults(counter, model, oldResult, newResult);
-                    }
-
-                    if (counter % 1000 == 0) {
-                        System.out.println("success count:" + counter);
-                        if (bw != null) {
-                            bw.flush();
-                        }
-                        if (reportGenerator != null) {
-                            reportGenerator.flush();
-                        }
-                    }
-                    counter++;
-
-                    // Check if max record count is reached
-                    if (maxRecordCount > 0 && counter >= maxRecordCount) {
-                        System.out.println("Reached max record count: " + maxRecordCount);
-                        break;
-                    }
-                }
-            }
-
-            // 処理結果をExecutionInfoに設定
-            execInfo.setTotalProcessed(counter);
-            execInfo.setDifferenceCount(falseCounter);
-            execInfo.setSkippedCount(skippedCounter);
-            execInfo.setEndTime(new Date());
-            execInfo.setDurationMs(System.currentTimeMillis() - start);
-
-            // レポート生成
-            if (bw != null) {
-                bw.close();
-            }
-
-            if (reportGenerator != null) {
-                String outputPath = "diff_result_wiki40b.html";
-                reportGenerator.generateReport(outputPath);
-                reportGenerator.close();
-                System.out.println("HTML report generated: " + outputPath);
-            }
-
-            System.out.println("total processed: " + counter);
-            System.out.println("falseCounter: " + falseCounter);
-            System.out.println("skippedCounter: " + skippedCounter);
-            System.out.println((System.currentTimeMillis() - start) + "msec");
+    @Override
+    protected void closeDataSource(Object dataSource) throws Exception {
+        if (parquetReader != null) {
+            parquetReader.close();
+        }
+        if (bufferedWriter != null) {
+            bufferedWriter.close();
         }
     }
 
-    private static boolean compareResult(BufferedWriter bw, WikipediaModel model,
-                                         AnalyzeResult[] oldResult, AnalyzeResult[] newResult, boolean printToConsole) throws IOException {
-        boolean different = false;
-
-        // size check
-        for (int i = 0; i < RESULT_SIZE; i++) {
-            if (oldResult[i].getTotalCost() != newResult[i].getTotalCost()) {
-                String msg = "analyze result[cost] is different!!";
-                if (bw != null) {
-                    bw.append(msg);
-                    bw.newLine();
-                }
-                if (printToConsole) System.out.println(msg);
-
-                String oldMsg = "  old[" + oldResult[i].getTotalCost() + "]";
-                if (bw != null) {
-                    bw.append(oldMsg);
-                    bw.newLine();
-                }
-                if (printToConsole) System.out.println(oldMsg);
-
-                String newMsg = "  new[" + newResult[i].getTotalCost() + "]";
-                if (bw != null) {
-                    bw.append(newMsg);
-                    bw.newLine();
-                }
-                if (printToConsole) System.out.println(newMsg);
-
-                different = true;
-            }
-            if (different) {
-                if (i == 0) {
-                    if (bw != null) {
-                        bw.append(model.title);
-                    }
-                    if (printToConsole) System.out.println("Title: " + model.title);
-                }
-            }
-            if (!oldResult[i].getTermList().equals(newResult[i].getTermList())) {
-                String msg = "analyze result[termList] is different!!";
-                if (bw != null) {
-                    bw.append(msg);
-                    bw.newLine();
-                }
-                if (printToConsole) System.out.println(msg);
-
-                String oldMsg = "  old[" + oldResult[i].getTermList().toString() + "]";
-                if (bw != null) {
-                    bw.append(oldMsg);
-                    bw.newLine();
-                }
-                if (printToConsole) System.out.println(oldMsg);
-
-                String newMsg = "  new[" + newResult[i].getTermList().toString() + "]";
-                if (bw != null) {
-                    bw.append(newMsg);
-                    bw.newLine();
-                }
-                if (printToConsole) System.out.println(newMsg);
-
-                different = true;
-            }
-            if (!oldResult[i].getPosList().equals(newResult[i].getPosList())) {
-                String msg = "analyze result[posList] is different!!";
-                if (bw != null) {
-                    bw.append(msg);
-                    bw.newLine();
-                }
-                if (printToConsole) System.out.println(msg);
-
-                String oldMsg = "  old[" + oldResult[i].getPosList().toString() + "]";
-                if (bw != null) {
-                    bw.append(oldMsg);
-                    bw.newLine();
-                }
-                if (printToConsole) System.out.println(oldMsg);
-
-                String newMsg = "  new[" + newResult[i].getPosList().toString() + "]";
-                if (bw != null) {
-                    bw.append(newMsg);
-                    bw.newLine();
-                }
-                if (printToConsole) System.out.println(newMsg);
-
-                different = true;
-            }
-            break;
-        }
-        return different;
+    @Override
+    protected String getTextReportFileName() {
+        return "diff_result_wiki40b.txt";
     }
 
-    private static void printResults(int counter, WikipediaModel model,
-                                      AnalyzeResult[] oldResult, AnalyzeResult[] newResult) {
-        System.out.println("\n=== Record #" + (counter + 1) + " ===");
-        System.out.println("Title: \"" + model.getTitle() + "\"");
-        System.out.println("Text: \"" + model.getText() + "\"");
-        System.out.println("\n[OLD Results]");
-        System.out.println("  Terms: " + oldResult[0].getTermList());
-        System.out.println("  POS: " + oldResult[0].getPosList());
-        System.out.println("  Total Cost: " + oldResult[0].getTotalCost());
-        System.out.println("\n[NEW Results]");
-        System.out.println("  Terms: " + newResult[0].getTermList());
-        System.out.println("  POS: " + newResult[0].getPosList());
-        System.out.println("  Total Cost: " + newResult[0].getTotalCost());
-    }
-
-    private static File[] getJarFiles(String path) {
-        File file = new File(path);
-
-        if (file.isDirectory()) {
-            File[] jarFiles = file.listFiles((dir, name) -> name.toLowerCase().endsWith(".jar"));
-            if (jarFiles == null || jarFiles.length == 0) {
-                throw new RuntimeException("No JAR files found in directory: " + path);
-            }
-            System.out.println("Found " + jarFiles.length + " JAR file(s) in " + path);
-            for (File jarFile : jarFiles) {
-                System.out.println("  - " + jarFile.getName());
-            }
-            return jarFiles;
-        } else if (file.isFile()) {
-            System.out.println("Using JAR file: " + file.getName());
-            return new File[]{file};
-        } else {
-            throw new RuntimeException("Path is neither a file nor a directory: " + path);
-        }
+    @Override
+    protected String getHtmlReportFileName() {
+        return "diff_result_wiki40b.html";
     }
 
     /**

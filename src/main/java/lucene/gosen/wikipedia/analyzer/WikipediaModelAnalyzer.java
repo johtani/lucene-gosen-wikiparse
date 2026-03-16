@@ -30,28 +30,55 @@ import org.apache.lucene.util.Attribute;
 
 
 public class WikipediaModelAnalyzer {
-  
-  public void analyze(WikipediaModel model, ComponentContainer container, AnalyzeResult[] result)throws Exception{
-    analyze(container, model.getTitle(), result[0]);
-    analyze(container, model.getText(), result[1]);
+
+  private final String dictionaryDir;
+
+  public WikipediaModelAnalyzer() {
+    this.dictionaryDir = null;
   }
-  
-  private void analyze(ComponentContainer container, String target, AnalyzeResult result) throws NumberFormatException, IllegalArgumentException, SecurityException, IllegalAccessException, InvocationTargetException, NoSuchMethodException{
+
+  public WikipediaModelAnalyzer(String dictionaryDir) {
+    this.dictionaryDir = dictionaryDir;
+  }
+
+  public int analyze(WikipediaModel model, ComponentContainer container, AnalyzeResult[] result)throws Exception{
+    boolean titleSkipped = analyze(container, model.getTitle(), result[0]);
+    boolean textSkipped = analyze(container, model.getText(), result[1]);
+
+    // Only count as skipped if both title and text are empty
+    return (titleSkipped && textSkipped) ? 1 : 0;
+  }
+
+  private boolean analyze(ComponentContainer container, String target, AnalyzeResult result) throws NumberFormatException, IllegalArgumentException, SecurityException, IllegalAccessException, InvocationTargetException, NoSuchMethodException{
     result.reset();
-    
+
+    // Skip empty strings
+    if (target == null || target.isEmpty()) {
+      return true; // skipped
+    }
+
     StringReader reader = new StringReader(target);
 
     try{
-      Tokenizer tokenizer = (Tokenizer)container.createComponent("org.apache.lucene.analysis.gosen.GosenTokenizer", new Class[]{Reader.class} ,new Object[]{reader});
+      // Load StreamFilter class
+      Class<?> streamFilterClass = container.loadComponent("net.java.sen.filter.StreamFilter");
+
+      // GosenTokenizer requires: StreamFilter filter, String dictionaryDir, boolean tokenizeUnknownKatakana
+      Tokenizer tokenizer = (Tokenizer)container.createComponent("org.apache.lucene.analysis.gosen.GosenTokenizer",
+          new Class[]{streamFilterClass, String.class, boolean.class},
+          new Object[]{null, dictionaryDir, false});
+      tokenizer.setReader(reader);
+      tokenizer.reset();
       CharTermAttribute attr = (CharTermAttribute)tokenizer.getAttribute(CharTermAttribute.class);
       Attribute posAttr = (Attribute)tokenizer.getAttribute(container.loadComponent("org.apache.lucene.analysis.gosen.tokenAttributes.PartOfSpeechAttribute"));
       Attribute costAttr = (Attribute)tokenizer.getAttribute(container.loadComponent("org.apache.lucene.analysis.gosen.tokenAttributes.CostAttribute"));
       while (tokenizer.incrementToken()) {
-        //TODO getCost execute by reflaction  
+        //TODO getCost execute by reflaction
         result.addCost( Integer.valueOf(costAttr.getClass().getMethod("getCost").invoke(costAttr).toString())  );
         result.addTerm(attr.toString());
         result.addPos(posAttr.toString());
       }
+      tokenizer.close();
     }catch(ClassNotFoundException cnfe){
       System.err.println("ClassNotFound!!!");
       throw new RuntimeException(cnfe);
@@ -59,6 +86,7 @@ public class WikipediaModelAnalyzer {
       System.err.println("target:["+target+"]");
       ioe.printStackTrace();
     }
+    return false; // not skipped
   }
  
   

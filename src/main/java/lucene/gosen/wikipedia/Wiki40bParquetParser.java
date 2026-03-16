@@ -79,15 +79,22 @@ public class Wiki40bParquetParser {
 
             int counter = 0;
             int falseCounter = 0;
+            int skippedCounter = 0;
             WikipediaModel model;
+            boolean printToConsole = (maxRecordCount > 0 && maxRecordCount <= 10);
 
             while ((model = reader.read()) != null) {
                 if (model.getText() != null && !model.getText().isEmpty()) {
-                    oldModelAnalyzer.analyze(model, oldJarContainer, oldResult);
+                    int skipped = oldModelAnalyzer.analyze(model, oldJarContainer, oldResult);
                     newModelAnalyzer.analyze(model, newJarContainer, newResult);
+                    skippedCounter += skipped;
 
-                    if (compareResult(bw, model, oldResult, newResult)) {
+                    if (compareResult(bw, model, oldResult, newResult, printToConsole)) {
                         falseCounter++;
+                    }
+
+                    if (printToConsole) {
+                        printResults(counter, model, oldResult, newResult);
                     }
 
                     if (counter % 1000 == 0) {
@@ -107,51 +114,95 @@ public class Wiki40bParquetParser {
             bw.close();
             System.out.println("total processed: " + counter);
             System.out.println("falseCounter: " + falseCounter);
+            System.out.println("skippedCounter: " + skippedCounter);
             System.out.println((System.currentTimeMillis() - start) + "msec");
         }
     }
 
     private static boolean compareResult(BufferedWriter bw, WikipediaModel model,
-                                         AnalyzeResult[] oldResult, AnalyzeResult[] newResult) throws IOException {
+                                         AnalyzeResult[] oldResult, AnalyzeResult[] newResult, boolean printToConsole) throws IOException {
         boolean different = false;
 
         // size check
         for (int i = 0; i < RESULT_SIZE; i++) {
             if (oldResult[i].getTotalCost() != newResult[i].getTotalCost()) {
-                bw.append("analyze result[cost] is different!!");
+                String msg = "analyze result[cost] is different!!";
+                bw.append(msg);
                 bw.newLine();
-                bw.append("  old[" + oldResult[i].getTotalCost() + "]");
+                if (printToConsole) System.out.println(msg);
+
+                String oldMsg = "  old[" + oldResult[i].getTotalCost() + "]";
+                bw.append(oldMsg);
                 bw.newLine();
-                bw.append("  new[" + newResult[i].getTotalCost() + "]");
+                if (printToConsole) System.out.println(oldMsg);
+
+                String newMsg = "  new[" + newResult[i].getTotalCost() + "]";
+                bw.append(newMsg);
                 bw.newLine();
+                if (printToConsole) System.out.println(newMsg);
+
                 different = true;
             }
             if (different) {
                 if (i == 0) {
                     bw.append(model.title);
+                    if (printToConsole) System.out.println("Title: " + model.title);
                 }
             }
             if (!oldResult[i].getTermList().equals(newResult[i].getTermList())) {
-                bw.append("analyze result[termList] is different!!");
+                String msg = "analyze result[termList] is different!!";
+                bw.append(msg);
                 bw.newLine();
-                bw.append("  old[" + oldResult[i].getTermList().toString() + "]");
+                if (printToConsole) System.out.println(msg);
+
+                String oldMsg = "  old[" + oldResult[i].getTermList().toString() + "]";
+                bw.append(oldMsg);
                 bw.newLine();
-                bw.append("  new[" + newResult[i].getTermList().toString() + "]");
+                if (printToConsole) System.out.println(oldMsg);
+
+                String newMsg = "  new[" + newResult[i].getTermList().toString() + "]";
+                bw.append(newMsg);
                 bw.newLine();
+                if (printToConsole) System.out.println(newMsg);
+
                 different = true;
             }
             if (!oldResult[i].getPosList().equals(newResult[i].getPosList())) {
-                bw.append("analyze result[posList] is different!!");
+                String msg = "analyze result[posList] is different!!";
+                bw.append(msg);
                 bw.newLine();
-                bw.append("  old[" + oldResult[i].getPosList().toString() + "]");
+                if (printToConsole) System.out.println(msg);
+
+                String oldMsg = "  old[" + oldResult[i].getPosList().toString() + "]";
+                bw.append(oldMsg);
                 bw.newLine();
-                bw.append("  new[" + newResult[i].getPosList().toString() + "]");
+                if (printToConsole) System.out.println(oldMsg);
+
+                String newMsg = "  new[" + newResult[i].getPosList().toString() + "]";
+                bw.append(newMsg);
                 bw.newLine();
+                if (printToConsole) System.out.println(newMsg);
+
                 different = true;
             }
             break;
         }
         return different;
+    }
+
+    private static void printResults(int counter, WikipediaModel model,
+                                      AnalyzeResult[] oldResult, AnalyzeResult[] newResult) {
+        System.out.println("\n=== Record #" + (counter + 1) + " ===");
+        System.out.println("Title: \"" + model.getTitle() + "\"");
+        System.out.println("Text: \"" + model.getText() + "\"");
+        System.out.println("\n[OLD Results]");
+        System.out.println("  Terms: " + oldResult[0].getTermList());
+        System.out.println("  POS: " + oldResult[0].getPosList());
+        System.out.println("  Total Cost: " + oldResult[0].getTotalCost());
+        System.out.println("\n[NEW Results]");
+        System.out.println("  Terms: " + newResult[0].getTermList());
+        System.out.println("  POS: " + newResult[0].getPosList());
+        System.out.println("  Total Cost: " + newResult[0].getTotalCost());
     }
 
     private static File[] getJarFiles(String path) {
@@ -227,7 +278,17 @@ public class Wiki40bParquetParser {
             return new PrimitiveConverter() {
                 @Override
                 public void addBinary(Binary value) {
-                    String str = value.toStringUsingUTF8();
+                    // Try different decoding approaches
+                    String str;
+                    try {
+                        // First, try UTF-8 decoding
+                        byte[] bytes = value.getBytes();
+                        str = new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
+                    } catch (Exception e) {
+                        // Fallback to default method
+                        str = value.toStringUsingUTF8();
+                    }
+
                     // フィールドインデックスに基づいてマッピング
                     // Wiki-40Bのスキーマ: wikidata_id, text, version_id
                     switch (fieldIndex) {

@@ -24,7 +24,8 @@ import java.util.List;
 public class ExecutionInfo {
     private String oldJarPath;
     private String newJarPath;
-    private String xmlPath;
+    private String dataSourcePath;  // XMLまたはParquetファイルのパス
+    private String dataSourceType;  // "XML" または "Parquet"
     private int maxRecordCount;
     private String reportFormat;
     private String outputDirectory;
@@ -55,12 +56,32 @@ public class ExecutionInfo {
         this.newJarPath = newJarPath;
     }
 
-    public String getXmlPath() {
-        return xmlPath;
+    public String getDataSourcePath() {
+        return dataSourcePath;
     }
 
+    public void setDataSourcePath(String dataSourcePath) {
+        this.dataSourcePath = dataSourcePath;
+    }
+
+    public String getDataSourceType() {
+        return dataSourceType;
+    }
+
+    public void setDataSourceType(String dataSourceType) {
+        this.dataSourceType = dataSourceType;
+    }
+
+    // 後方互換性のために残す
+    @Deprecated
+    public String getXmlPath() {
+        return dataSourcePath;
+    }
+
+    @Deprecated
     public void setXmlPath(String xmlPath) {
-        this.xmlPath = xmlPath;
+        this.dataSourcePath = xmlPath;
+        this.dataSourceType = "XML";
     }
 
     public int getMaxRecordCount() {

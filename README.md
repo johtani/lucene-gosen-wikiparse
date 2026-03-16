@@ -162,11 +162,15 @@ Wiki-40Bデータセットを使用する場合は、専用のパーサーを使
 - `arg[1]`: 新バージョンの JAR ファイルパスまたはディレクトリパス
 - `arg[2]` (オプション): Parquetファイルのパス（デフォルト: `./data/wiki40b-ja/train.parquet`）
 - `arg[3]` (オプション): 処理する最大件数（デフォルト: 全件処理）
+- `arg[4]` (オプション): レポート形式 (`txt`|`html`、デフォルト: `txt`)
 
 **処理件数を制限した軽量テスト：**
 ```powershell
-# 100件だけ処理
+# 100件だけ処理（テキスト形式）
 .\gradlew runWiki40bParser --args="lib/6.0.1 lib/6.2.1 ./data/wiki40b-ja/test.parquet 100"
+
+# HTMLレポート生成
+.\gradlew runWiki40bParser --args="lib/6.0.1 lib/6.2.1 ./data/wiki40b-ja/test.parquet 100 html"
 ```
 
 ## 出力結果
@@ -178,14 +182,15 @@ Wiki-40Bデータセットを使用する場合は、専用のパーサーを使
 - **テキストレポート**: `diff_result.txt` - 従来のテキスト形式
 
 ### Wiki-40B Parquetパーサー
-- `diff_result_wiki40b.txt`
+- **HTMLレポート**: `diff_result_wiki40b.html` - 視覚的で詳細なレポート（`html`形式指定時）
+- **テキストレポート**: `diff_result_wiki40b.txt` - 従来のテキスト形式（デフォルト）
 
 ### HTMLレポートの内容
 
 **実行情報セクション**
 - 実行開始/終了時刻、実行時間
 - Old/New JARパスとファイル一覧
-- Wikipedia XMLファイルパス
+- データソースパス（Wikipedia XMLまたはWiki40b Parquet）
 - 最大レコード数設定
 
 **サマリーセクション**

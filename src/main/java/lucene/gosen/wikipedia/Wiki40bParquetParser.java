@@ -10,6 +10,7 @@ import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
+import java.nio.file.Paths;
 import java.util.concurrent.Callable;
 
 /**
@@ -99,6 +100,15 @@ public class Wiki40bParquetParser extends AbstractWikipediaParser implements Cal
 
     @Override
     protected Object initializeDataSource(ParserConfig config) throws Exception {
+        try {
+            ParquetFileValidator.assertReadableParquetFile(Paths.get(config.getInputPath()));
+        } catch (Exception e) {
+            throw new RuntimeException(
+                    "Invalid parquet input: " + config.getInputPath()
+                            + ". The file may be incomplete or not parquet. "
+                            + "Delete the file and re-download it with runWiki40bDownload.", e);
+        }
+
         Configuration conf = new Configuration();
         Path path = new Path(config.getInputPath());
         parquetReader = ParquetReader.builder(new Wiki40bReadSupport(), path)

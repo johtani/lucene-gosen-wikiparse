@@ -5,14 +5,18 @@ import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
 import java.io.BufferedInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URL;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.concurrent.Callable;
 
 /**
@@ -111,19 +115,38 @@ public class Wiki40bDownloader implements Callable<Integer> {
      */
     private static void downloadFile(String urlString, String destString) throws IOException {
         Path destPath = Paths.get(destString);
+        Path tempPath = Paths.get(destString + ".part");
 
-        // 既に存在する場合はスキップ
+        // 既存ファイルが有効なParquetならスキップ
         if (Files.exists(destPath)) {
-            System.out.println("File already exists, skipping: " + destPath.getFileName());
-            return;
+            if (ParquetFileValidator.isLikelyParquetFile(destPath)) {
+                System.out.println("Valid parquet file already exists, skipping: " + destPath.getFileName());
+                return;
+            }
+            System.out.println("Existing file is invalid parquet, re-downloading: " + destPath.getFileName());
+            Files.delete(destPath);
+        }
+
+        if (Files.exists(tempPath)) {
+            Files.delete(tempPath);
         }
 
         System.out.println("Downloading from: " + urlString);
         System.out.println("To: " + destPath.toAbsolutePath());
 
         URL url = URI.create(urlString).toURL();
-        try (InputStream in = new BufferedInputStream(url.openStream());
-             FileOutputStream out = new FileOutputStream(destPath.toFile())) {
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        connection.setConnectTimeout(30_000);
+        connection.setReadTimeout(300_000);
+        connection.setRequestMethod("GET");
+        connection.connect();
+        int status = connection.getResponseCode();
+        if (status < 200 || status >= 300) {
+            throw new IOException("Failed to download file. HTTP status: " + status + " from " + urlString);
+        }
+
+        try (InputStream in = new BufferedInputStream(connection.getInputStream());
+             FileOutputStream out = new FileOutputStream(tempPath.toFile())) {
 
             byte[] dataBuffer = new byte[65536]; // 64KB buffer
             int bytesRead;
@@ -141,6 +164,18 @@ public class Wiki40bDownloader implements Callable<Integer> {
                 }
             }
             System.out.printf("Download completed! Total size: %.2f MB%n", totalBytesRead / (1024.0 * 1024.0));
+        } catch (FileNotFoundException e) {
+            throw new IOException("Download returned no file content: " + urlString, e);
+        } finally {
+            connection.disconnect();
         }
+
+        ParquetFileValidator.assertReadableParquetFile(tempPath);
+        try {
+            Files.move(tempPath, destPath, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+        } catch (AtomicMoveNotSupportedException e) {
+            Files.move(tempPath, destPath, StandardCopyOption.REPLACE_EXISTING);
+        }
+        System.out.println("Saved validated parquet file: " + destPath.toAbsolutePath());
     }
 }

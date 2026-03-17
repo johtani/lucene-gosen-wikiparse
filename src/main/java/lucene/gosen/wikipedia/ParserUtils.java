@@ -107,7 +107,6 @@ public class ParserUtils {
             if (!oldResult[i].getPosList().equals(newResult[i].getPosList())) {
                 different = true;
             }
-            break;
         }
         return different;
     }

@@ -58,6 +58,14 @@ public class PagesArticlesXmlParser extends AbstractWikipediaParser implements C
             description = "Report format: text, html, or both (default: ${DEFAULT-VALUE})")
     private String reportFormat;
 
+    @Option(names = {"-w", "--workers"}, defaultValue = "1",
+            description = "Number of worker threads for morphological analysis (default: ${DEFAULT-VALUE})")
+    private int workerCount;
+
+    @Option(names = {"-q", "--queue-size"}, defaultValue = "1000",
+            description = "Maximum number of in-flight records for parallel processing (default: ${DEFAULT-VALUE})")
+    private int queueSize;
+
     /**
      * XMLで使われてる日付形式
      */
@@ -85,6 +93,14 @@ public class PagesArticlesXmlParser extends AbstractWikipediaParser implements C
             System.err.println("Error: max record count must be a positive number or -1 for unlimited");
             return 1;
         }
+        if (workerCount <= 0) {
+            System.err.println("Error: workers must be a positive number");
+            return 1;
+        }
+        if (queueSize <= 0) {
+            System.err.println("Error: queue-size must be a positive number");
+            return 1;
+        }
 
         // ParserConfigを構築
         ParserConfig config = ParserConfig.builder()
@@ -93,6 +109,8 @@ public class PagesArticlesXmlParser extends AbstractWikipediaParser implements C
                 .inputPath(inputPath)
                 .maxRecordCount(maxRecordCount)
                 .reportFormat(reportFormat)
+                .workerCount(workerCount)
+                .queueSize(queueSize)
                 .build();
 
         // パーサーを実行

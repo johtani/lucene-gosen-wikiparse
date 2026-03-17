@@ -24,6 +24,8 @@ public class ParserConfig {
     private final String inputPath;
     private final int maxRecordCount;
     private final String reportFormat;
+    private final int workerCount;
+    private final int queueSize;
 
     private ParserConfig(Builder builder) {
         this.oldJarPath = builder.oldJarPath;
@@ -31,6 +33,8 @@ public class ParserConfig {
         this.inputPath = builder.inputPath;
         this.maxRecordCount = builder.maxRecordCount;
         this.reportFormat = builder.reportFormat;
+        this.workerCount = builder.workerCount;
+        this.queueSize = builder.queueSize;
     }
 
     public String getOldJarPath() {
@@ -53,6 +57,14 @@ public class ParserConfig {
         return reportFormat;
     }
 
+    public int getWorkerCount() {
+        return workerCount;
+    }
+
+    public int getQueueSize() {
+        return queueSize;
+    }
+
     public boolean shouldPrintToConsole() {
         return maxRecordCount > 0 && maxRecordCount <= 10;
     }
@@ -67,6 +79,8 @@ public class ParserConfig {
         private String inputPath;
         private int maxRecordCount = -1; // -1 means no limit
         private String reportFormat = "both";
+        private int workerCount = 1;
+        private int queueSize = 1000;
 
         public Builder oldJarPath(String oldJarPath) {
             this.oldJarPath = oldJarPath;
@@ -93,6 +107,16 @@ public class ParserConfig {
             return this;
         }
 
+        public Builder workerCount(int workerCount) {
+            this.workerCount = workerCount;
+            return this;
+        }
+
+        public Builder queueSize(int queueSize) {
+            this.queueSize = queueSize;
+            return this;
+        }
+
         public ParserConfig build() {
             if (oldJarPath == null || oldJarPath.isEmpty()) {
                 throw new IllegalArgumentException("oldJarPath is required");
@@ -108,6 +132,12 @@ public class ParserConfig {
             }
             if (!reportFormat.equals("text") && !reportFormat.equals("html") && !reportFormat.equals("both")) {
                 throw new IllegalArgumentException("reportFormat must be 'text', 'html', or 'both'");
+            }
+            if (workerCount <= 0) {
+                throw new IllegalArgumentException("workerCount must be a positive number");
+            }
+            if (queueSize <= 0) {
+                throw new IllegalArgumentException("queueSize must be a positive number");
             }
             return new ParserConfig(this);
         }

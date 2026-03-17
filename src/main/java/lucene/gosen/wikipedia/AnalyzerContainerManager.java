@@ -29,10 +29,7 @@ public class AnalyzerContainerManager {
     private final WikipediaModelAnalyzer oldModelAnalyzer;
     private final WikipediaModelAnalyzer newModelAnalyzer;
 
-    public AnalyzerContainerManager(String oldJarPath, String newJarPath) throws ClassNotFoundException {
-        File[] oldJarFiles = ParserUtils.getJarFiles(oldJarPath);
-        File[] newJarFiles = ParserUtils.getJarFiles(newJarPath);
-
+    public AnalyzerContainerManager(File[] oldJarFiles, File[] newJarFiles) throws ClassNotFoundException {
         this.oldJarContainer = new ComponentContainer(oldJarFiles);
         this.newJarContainer = new ComponentContainer(newJarFiles);
 

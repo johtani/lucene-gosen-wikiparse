@@ -1,5 +1,9 @@
 package lucene.gosen.wikipedia;
 
+import picocli.CommandLine;
+import picocli.CommandLine.Command;
+import picocli.CommandLine.Option;
+
 import java.io.BufferedInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -9,14 +13,24 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.concurrent.Callable;
 
 /**
  * Hugging FaceのWiki-40B日本語データセットをダウンロードするクラス
  */
-public class Wiki40bDownloader {
+@Command(name = "download-wiki40b", mixinStandardHelpOptions = true, version = "1.0",
+        description = "Download Wiki-40B Japanese dataset from Hugging Face")
+public class Wiki40bDownloader implements Callable<Integer> {
 
     private static final String BASE_URL = "https://huggingface.co/datasets/range3/wiki40b-ja/resolve/main/";
-    private static final String DEFAULT_DEST_DIR = "./data/wiki40b-ja";
+
+    @Option(names = {"-d", "--destination"}, defaultValue = "./data/wiki40b-ja",
+            description = "Destination directory (default: ${DEFAULT-VALUE})")
+    private String destination;
+
+    @Option(names = {"-s", "--split"}, defaultValue = "ALL",
+            description = "Dataset split: TRAIN, VALIDATION, TEST, or ALL (default: ${DEFAULT-VALUE})")
+    private String split;
 
     // 利用可能なデータセット分割
     public enum Split {
@@ -40,23 +54,28 @@ public class Wiki40bDownloader {
     }
 
     public static void main(String[] args) {
-        String destDir = args.length > 0 ? args[0] : DEFAULT_DEST_DIR;
-        String splitArg = args.length > 1 ? args[1].toUpperCase() : "ALL";
+        int exitCode = new CommandLine(new Wiki40bDownloader()).execute(args);
+        System.exit(exitCode);
+    }
 
+    @Override
+    public Integer call() {
         try {
-            if ("ALL".equals(splitArg)) {
-                downloadAll(destDir);
+            String splitUpper = split.toUpperCase();
+            if ("ALL".equals(splitUpper)) {
+                downloadAll(destination);
             } else {
-                Split split = Split.valueOf(splitArg);
-                downloadSplit(split, destDir);
+                Split splitEnum = Split.valueOf(splitUpper);
+                downloadSplit(splitEnum, destination);
             }
+            return 0;
         } catch (IllegalArgumentException e) {
             System.err.println("Invalid split name. Use: TRAIN, VALIDATION, TEST, or ALL");
-            System.exit(1);
+            return 1;
         } catch (IOException e) {
             System.err.println("Error downloading file: " + e.getMessage());
             e.printStackTrace();
-            System.exit(1);
+            return 1;
         }
     }
 

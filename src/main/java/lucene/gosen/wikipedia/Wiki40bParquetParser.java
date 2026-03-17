@@ -6,44 +6,75 @@ import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.api.ReadSupport;
 import org.apache.parquet.io.api.*;
 import org.apache.parquet.schema.MessageType;
+import picocli.CommandLine;
+import picocli.CommandLine.Command;
+import picocli.CommandLine.Option;
 
 import java.io.BufferedWriter;
 import java.io.FileWriter;
+import java.util.concurrent.Callable;
 
 /**
  * Wiki-40B ParquetファイルをパースしてWikipediaModelに変換するクラス
  */
-public class Wiki40bParquetParser extends AbstractWikipediaParser {
+@Command(name = "parse-parquet", mixinStandardHelpOptions = true, version = "1.0",
+        description = "Parse Wiki-40B Parquet file and compare analysis results between two versions")
+public class Wiki40bParquetParser extends AbstractWikipediaParser implements Callable<Integer> {
+
+    @Option(names = {"-o", "--old-jar"}, required = true,
+            description = "Path to old JAR file or directory containing JAR files")
+    private String oldJarPath;
+
+    @Option(names = {"-n", "--new-jar"}, required = true,
+            description = "Path to new JAR file or directory containing JAR files")
+    private String newJarPath;
+
+    @Option(names = {"-i", "--input"}, defaultValue = "./data/wiki40b-ja/train.parquet",
+            description = "Parquet file path (default: ${DEFAULT-VALUE})")
+    private String inputPath;
+
+    @Option(names = {"-m", "--max-records"}, defaultValue = "-1",
+            description = "Maximum number of records to process (default: all records)")
+    private int maxRecordCount;
+
+    @Option(names = {"-f", "--format"}, defaultValue = "text",
+            description = "Report format: text, html, or both (default: ${DEFAULT-VALUE})")
+    private String reportFormat;
 
     private ParquetReader<WikipediaModel> parquetReader;
     private BufferedWriter bufferedWriter;
 
-    public static void main(String[] args) throws Exception {
-        if (args.length < 2) {
-            System.out.println("arg[0] is old jar or directory, arg[1] is new jar or directory, [arg[2] is parquet file (default: ./data/wiki40b-ja/train.parquet)], [arg[3] is max record count (optional, default: all records)], [arg[4] is report format (text|html|both, default: text)]");
-            System.exit(-1);
+    public static void main(String[] args) {
+        int exitCode = new CommandLine(new Wiki40bParquetParser()).execute(args);
+        System.exit(exitCode);
+    }
+
+    @Override
+    public Integer call() throws Exception {
+        // Validate report format
+        if (!reportFormat.equals("text") && !reportFormat.equals("html") && !reportFormat.equals("both")) {
+            System.err.println("Error: report format must be 'text', 'html', or 'both', got: " + reportFormat);
+            return 1;
         }
 
-        String parquetPath = args.length >= 3 ? args[2] : "./data/wiki40b-ja/train.parquet";
-
-        // Parse max record count with validation
-        int maxRecordCount = ParserUtils.parseMaxRecordCount(args, 3, -1);
-
-        // Parse report format
-        String reportFormat = ParserUtils.parseReportFormat(args, 4, "text");
+        // Validate max record count
+        if (maxRecordCount < -1 || maxRecordCount == 0) {
+            System.err.println("Error: max record count must be a positive number or -1 for unlimited");
+            return 1;
+        }
 
         // ParserConfigを構築
         ParserConfig config = ParserConfig.builder()
-                .oldJarPath(args[0])
-                .newJarPath(args[1])
-                .inputPath(parquetPath)
+                .oldJarPath(oldJarPath)
+                .newJarPath(newJarPath)
+                .inputPath(inputPath)
                 .maxRecordCount(maxRecordCount)
                 .reportFormat(reportFormat)
                 .build();
 
         // パーサーを実行
-        Wiki40bParquetParser parser = new Wiki40bParquetParser();
-        parser.execute(config);
+        execute(config);
+        return 0;
     }
 
     @Override

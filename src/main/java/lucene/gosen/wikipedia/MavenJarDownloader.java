@@ -3,6 +3,9 @@ package lucene.gosen.wikipedia;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
+import picocli.CommandLine;
+import picocli.CommandLine.Command;
+import picocli.CommandLine.Option;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -15,11 +18,14 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.concurrent.Callable;
 
 /**
  * Maven CentralからluceneとGosenのJARファイルをダウンロードするクラス
  */
-public class MavenJarDownloader {
+@Command(name = "download-jars", mixinStandardHelpOptions = true, version = "1.0",
+        description = "Download lucene-gosen and lucene-core JAR files from Maven Central")
+public class MavenJarDownloader implements Callable<Integer> {
 
     private static final String MAVEN_CENTRAL_BASE = "https://repo1.maven.org/maven2";
     private static final String LUCENE_GOSEN_GROUP_ID = "com.github.lucene-gosen";
@@ -27,25 +33,35 @@ public class MavenJarDownloader {
     private static final String LUCENE_CORE_GROUP_ID = "org.apache.lucene";
     private static final String LUCENE_CORE_ARTIFACT_ID = "lucene-core";
 
-    public static void main(String[] args) {
-        if (args.length < 1) {
-            System.out.println("Usage: java MavenJarDownloader <version> [destination-dir] [classifier]");
-            System.out.println("Example: java MavenJarDownloader 6.2.1 ./lib/6.2.1");
-            System.out.println("Example: java MavenJarDownloader 6.2.1 ./lib/6.2.1 ipadic");
-            System.exit(1);
-        }
+    @Option(names = {"-v", "--version"}, required = true,
+            description = "Version of lucene-gosen to download")
+    private String version;
 
-        String version = args[0];
-        String destDir = args.length > 1 ? args[1] : "./lib/" + version;
-        String classifier = args.length > 2 ? args[2] : "ipadic";
+    @Option(names = {"-d", "--destination"},
+            description = "Destination directory (default: ./lib/<version>)")
+    private String destination;
+
+    @Option(names = {"-c", "--classifier"}, defaultValue = "ipadic",
+            description = "Classifier (default: ${DEFAULT-VALUE})")
+    private String classifier;
+
+    public static void main(String[] args) {
+        int exitCode = new CommandLine(new MavenJarDownloader()).execute(args);
+        System.exit(exitCode);
+    }
+
+    @Override
+    public Integer call() {
+        String destDir = destination != null ? destination : "./lib/" + version;
 
         try {
             downloadLuceneGosenWithDependencies(version, destDir, classifier);
             System.out.println("All downloads completed successfully!");
+            return 0;
         } catch (Exception e) {
             System.err.println("Error downloading files: " + e.getMessage());
             e.printStackTrace();
-            System.exit(1);
+            return 1;
         }
     }
 

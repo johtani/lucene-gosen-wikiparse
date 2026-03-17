@@ -21,6 +21,7 @@ import lucene.gosen.wikipedia.report.HtmlReportGenerator;
 import lucene.gosen.wikipedia.report.ReportGenerator;
 import lucene.gosen.wikipedia.report.TextReportGenerator;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
@@ -40,15 +41,19 @@ public abstract class AbstractWikipediaParser {
     public void execute(ParserConfig config) throws Exception {
         long start = System.currentTimeMillis();
 
+        // JARファイルを取得
+        File[] oldJarFiles = ParserUtils.getJarFiles(config.getOldJarPath());
+        File[] newJarFiles = ParserUtils.getJarFiles(config.getNewJarPath());
+
         // AnalyzerContainerManagerを作成
         AnalyzerContainerManager analyzerManager = new AnalyzerContainerManager(
-                config.getOldJarPath(), config.getNewJarPath());
+                oldJarFiles, newJarFiles);
 
         // 実行情報を構築
         ExecutionInfo execInfo = ParserUtils.buildExecutionInfo(
                 config,
-                ParserUtils.getJarFiles(config.getOldJarPath()),
-                ParserUtils.getJarFiles(config.getNewJarPath()),
+                oldJarFiles,
+                newJarFiles,
                 getDataSourceType(),
                 start);
 
@@ -75,42 +80,49 @@ public abstract class AbstractWikipediaParser {
             WikipediaModel model;
             while ((model = readNextModel(dataSource)) != null) {
                 if (shouldProcessModel(model)) {
-                    // 解析実行
-                    int skipped = analyzerManager.getOldModelAnalyzer().analyze(
-                            model, analyzerManager.getOldJarContainer(), oldResult);
-                    analyzerManager.getNewModelAnalyzer().analyze(
-                            model, analyzerManager.getNewJarContainer(), newResult);
-                    skippedCounter += skipped;
+                    try {
+                        // 解析実行
+                        int skipped = analyzerManager.getOldModelAnalyzer().analyze(
+                                model, analyzerManager.getOldJarContainer(), oldResult);
+                        analyzerManager.getNewModelAnalyzer().analyze(
+                                model, analyzerManager.getNewJarContainer(), newResult);
+                        skippedCounter += skipped;
 
-                    // 結果比較
-                    boolean hasDifference = ParserUtils.compareResult(oldResult, newResult, RESULT_SIZE);
-                    if (hasDifference) {
-                        falseCounter++;
-                    }
-
-                    // レポートに結果を追加
-                    for (ReportGenerator generator : reportGenerators) {
-                        generator.addDiffResult(model, oldResult, newResult, hasDifference, printToConsole);
-                    }
-
-                    // コンソール出力
-                    if (printToConsole) {
-                        ParserUtils.printResults(counter, model, oldResult, newResult);
-                    }
-
-                    // 定期的なフラッシュ
-                    if (counter % 1000 == 0) {
-                        System.out.println("success count:" + counter);
-                        for (ReportGenerator generator : reportGenerators) {
-                            generator.flush();
+                        // 結果比較
+                        boolean hasDifference = ParserUtils.compareResult(oldResult, newResult, RESULT_SIZE);
+                        if (hasDifference) {
+                            falseCounter++;
                         }
-                    }
-                    counter++;
 
-                    // 最大レコード数チェック
-                    if (config.getMaxRecordCount() > 0 && counter >= config.getMaxRecordCount()) {
-                        System.out.println("Reached max record count: " + config.getMaxRecordCount());
-                        break;
+                        // レポートに結果を追加
+                        for (ReportGenerator generator : reportGenerators) {
+                            generator.addDiffResult(model, oldResult, newResult, hasDifference, printToConsole);
+                        }
+
+                        // コンソール出力
+                        if (printToConsole) {
+                            ParserUtils.printResults(counter, model, oldResult, newResult);
+                        }
+
+                        // 定期的なフラッシュ
+                        if (counter % 1000 == 0) {
+                            System.out.println("success count:" + counter);
+                            for (ReportGenerator generator : reportGenerators) {
+                                generator.flush();
+                            }
+                        }
+                        counter++;
+
+                        // 最大レコード数チェック
+                        if (config.getMaxRecordCount() > 0 && counter >= config.getMaxRecordCount()) {
+                            System.out.println("Reached max record count: " + config.getMaxRecordCount());
+                            break;
+                        }
+                    } catch (Exception e) {
+                        System.err.println("Error processing record #" + (counter + 1) +
+                                (model.getTitle() != null ? " (Title: " + model.getTitle() + ")" : "") +
+                                ": " + e.getMessage());
+                        // Continue processing next record
                     }
                 }
             }

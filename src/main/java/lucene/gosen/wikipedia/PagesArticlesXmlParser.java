@@ -115,11 +115,29 @@ public class PagesArticlesXmlParser extends AbstractWikipediaParser implements C
     @Override
     protected WikipediaModel readNextModel(Object dataSource) throws Exception {
         XMLEventReader reader = (XMLEventReader) dataSource;
-        while (reader.hasNext()) {
-            XMLEvent event = reader.nextEvent();
-            if (isStartElem(event, "page")) {
-                return pageParse(reader);
+        try {
+            while (reader.hasNext()) {
+                XMLEvent event = reader.nextEvent();
+                if (isStartElem(event, "page")) {
+                    WikipediaModel model = pageParse(reader);
+                    // スキップすべきページ（nullが返される）の場合は次のページを探す
+                    if (model != null) {
+                        return model;
+                    }
+                    // model == null の場合は continue して次の <page> を探す
+                }
             }
+        } catch (com.ctc.wstx.exc.WstxIOException e) {
+            System.err.println("Warning: Unexpected end of XML stream. The input file may be truncated or corrupted.");
+            System.err.println("Error details: " + e.getMessage());
+            return null; // Signal end of processing
+        } catch (javax.xml.stream.XMLStreamException e) {
+            if (e.getCause() instanceof java.io.IOException) {
+                System.err.println("Warning: IO error while reading XML stream. The input file may be incomplete.");
+                System.err.println("Error details: " + e.getMessage());
+                return null; // Signal end of processing
+            }
+            throw e; // Re-throw other XML stream exceptions
         }
         return null;
     }
@@ -207,13 +225,19 @@ public class PagesArticlesXmlParser extends AbstractWikipediaParser implements C
     private static String getText(XMLEventReader reader, String name)
             throws Exception {
         StringBuilder builder = new StringBuilder();
-        while (reader.hasNext()) {
-            XMLEvent event = reader.nextEvent();
-            if (isEndElem(event, name)) break;
-            else if (event.getEventType() == XMLStreamConstants.CHARACTERS) {
-                String data = event.asCharacters().getData().trim();
-                if (!data.isEmpty()) builder.append(data);
+        try {
+            while (reader.hasNext()) {
+                XMLEvent event = reader.nextEvent();
+                if (isEndElem(event, name)) break;
+                else if (event.getEventType() == XMLStreamConstants.CHARACTERS) {
+                    String data = event.asCharacters().getData().trim();
+                    if (!data.isEmpty()) builder.append(data);
+                }
             }
+        } catch (com.ctc.wstx.exc.WstxIOException e) {
+            // Stream ended unexpectedly while reading element content
+            System.err.println("Warning: Stream ended while reading <" + name + "> element");
+            // Return whatever was collected so far
         }
         return builder.toString();
     }

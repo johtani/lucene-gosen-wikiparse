@@ -1,5 +1,9 @@
 package lucene.gosen.wikipedia;
 
+import picocli.CommandLine;
+import picocli.CommandLine.Command;
+import picocli.CommandLine.Option;
+
 import java.io.BufferedInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -9,25 +13,39 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.concurrent.Callable;
 
 /**
  * Wikipediaのダンプファイルをダウンロードするクラス
  */
-public class WikipediaDownloader {
+@Command(name = "download-wikipedia", mixinStandardHelpOptions = true, version = "1.0",
+        description = "Download Wikipedia dump file from Wikimedia")
+public class WikipediaDownloader implements Callable<Integer> {
 
-    private static final String DEFAULT_URL = "https://dumps.wikimedia.org/jawiki/latest/jawiki-latest-pages-articles.xml.bz2";
-    private static final String DEFAULT_DEST = "./data/jawiki-latest-pages-articles.xml.bz2";
+    @Option(names = {"-u", "--url"},
+            defaultValue = "https://dumps.wikimedia.org/jawiki/latest/jawiki-latest-pages-articles.xml.bz2",
+            description = "URL to download from (default: ${DEFAULT-VALUE})")
+    private String url;
+
+    @Option(names = {"-d", "--destination"},
+            defaultValue = "./data/jawiki-latest-pages-articles.xml.bz2",
+            description = "Destination file path (default: ${DEFAULT-VALUE})")
+    private String destination;
 
     public static void main(String[] args) {
-        String urlString = args.length > 0 ? args[0] : DEFAULT_URL;
-        String destString = args.length > 1 ? args[1] : DEFAULT_DEST;
+        int exitCode = new CommandLine(new WikipediaDownloader()).execute(args);
+        System.exit(exitCode);
+    }
 
+    @Override
+    public Integer call() {
         try {
-            downloadFile(urlString, destString);
+            downloadFile(url, destination);
+            return 0;
         } catch (IOException e) {
             System.err.println("Error downloading file: " + e.getMessage());
             e.printStackTrace();
-            System.exit(1);
+            return 1;
         }
     }
 

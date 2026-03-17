@@ -17,6 +17,9 @@ package lucene.gosen.wikipedia;
 
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
+import picocli.CommandLine;
+import picocli.CommandLine.Command;
+import picocli.CommandLine.Option;
 
 import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLInputFactory;
@@ -26,11 +29,34 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.text.SimpleDateFormat;
+import java.util.concurrent.Callable;
 
 /**
  * Wikipediaのjawiki-latest-pages-articles.xmlを解析する
  */
-public class PagesArticlesXmlParser extends AbstractWikipediaParser {
+@Command(name = "parse-xml", mixinStandardHelpOptions = true, version = "1.0",
+        description = "Parse Wikipedia XML dump file and compare analysis results between two versions")
+public class PagesArticlesXmlParser extends AbstractWikipediaParser implements Callable<Integer> {
+
+    @Option(names = {"-o", "--old-jar"}, required = true,
+            description = "Path to old JAR file or directory containing JAR files")
+    private String oldJarPath;
+
+    @Option(names = {"-n", "--new-jar"}, required = true,
+            description = "Path to new JAR file or directory containing JAR files")
+    private String newJarPath;
+
+    @Option(names = {"-i", "--input"}, defaultValue = "./data/jawiki-latest-pages-articles.xml",
+            description = "Wikipedia XML file path (default: ${DEFAULT-VALUE})")
+    private String inputPath;
+
+    @Option(names = {"-m", "--max-records"}, defaultValue = "-1",
+            description = "Maximum number of records to process (default: all records)")
+    private int maxRecordCount;
+
+    @Option(names = {"-f", "--format"}, defaultValue = "both",
+            description = "Report format: text, html, or both (default: ${DEFAULT-VALUE})")
+    private String reportFormat;
 
     /**
      * XMLで使われてる日付形式
@@ -41,32 +67,37 @@ public class PagesArticlesXmlParser extends AbstractWikipediaParser {
     /**
      * main
      */
-    public static void main(String[] args) throws Exception {
-        if (args.length < 2) {
-            System.out.println("arg[0] is old jar or directory, arg[1] is new jar or directory, [arg[2] is wikipedia xml file (default: ./data/jawiki-latest-pages-articles.xml)], [arg[3] is max record count (optional, default: all records)], [arg[4] is report format (text|html|both, default: both)]");
-            System.exit(-1);
+    public static void main(String[] args) {
+        int exitCode = new CommandLine(new PagesArticlesXmlParser()).execute(args);
+        System.exit(exitCode);
+    }
+
+    @Override
+    public Integer call() throws Exception {
+        // Validate report format
+        if (!reportFormat.equals("text") && !reportFormat.equals("html") && !reportFormat.equals("both")) {
+            System.err.println("Error: report format must be 'text', 'html', or 'both', got: " + reportFormat);
+            return 1;
         }
 
-        String xmlPath = args.length >= 3 ? args[2] : "./data/jawiki-latest-pages-articles.xml";
-
-        // Parse max record count with validation
-        int maxRecordCount = ParserUtils.parseMaxRecordCount(args, 3, -1);
-
-        // Parse report format
-        String reportFormat = ParserUtils.parseReportFormat(args, 4, "both");
+        // Validate max record count
+        if (maxRecordCount < -1 || maxRecordCount == 0) {
+            System.err.println("Error: max record count must be a positive number or -1 for unlimited");
+            return 1;
+        }
 
         // ParserConfigを構築
         ParserConfig config = ParserConfig.builder()
-                .oldJarPath(args[0])
-                .newJarPath(args[1])
-                .inputPath(xmlPath)
+                .oldJarPath(oldJarPath)
+                .newJarPath(newJarPath)
+                .inputPath(inputPath)
                 .maxRecordCount(maxRecordCount)
                 .reportFormat(reportFormat)
                 .build();
 
         // パーサーを実行
-        PagesArticlesXmlParser parser = new PagesArticlesXmlParser();
-        parser.execute(config);
+        execute(config);
+        return 0;
     }
 
     @Override

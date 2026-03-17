@@ -21,6 +21,9 @@ dependencies {
     implementation 'org.apache.hadoop:hadoop-common:3.4.2'
     implementation 'org.apache.hadoop:hadoop-mapreduce-client-core:3.4.2'
 
+    // Picocli - Command line argument parser
+    implementation 'info.picocli:picocli:4.7.6'
+
     // テストライブラリ
     testImplementation platform('org.junit:junit-bom:5.10.0')
     testImplementation 'org.junit.jupiter:junit-jupiter'
@@ -41,38 +44,38 @@ test {
     useJUnitPlatform()
 }
 
-// 実行用タスク
+// 実行用タスク - Picocli対応
 tasks.register('runParser', JavaExec) {
     mainClass = 'lucene.gosen.wikipedia.PagesArticlesXmlParser'
     classpath = sourceSets.main.runtimeClasspath
     systemProperty 'file.encoding', 'UTF-8'
-    // 引数が必要な場合は --args="old.jar new.jar" で渡せるように設定
+    // 使用例: ./gradlew runParser --args="--old-jar lib/old --new-jar lib/new --input data/jawiki.xml --max-records 1000 --format both"
 }
 
 tasks.register('runDownload', JavaExec) {
     mainClass = 'lucene.gosen.wikipedia.WikipediaDownloader'
     classpath = sourceSets.main.runtimeClasspath
     systemProperty 'file.encoding', 'UTF-8'
-    // 引数が必要な場合は --args="url destination" で渡せるように設定
+    // 使用例: ./gradlew runDownload --args="--url https://... --destination data/file.xml.bz2"
 }
 
 tasks.register('runDownloadJars', JavaExec) {
     mainClass = 'lucene.gosen.wikipedia.MavenJarDownloader'
     classpath = sourceSets.main.runtimeClasspath
     systemProperty 'file.encoding', 'UTF-8'
-    // 引数が必要な場合は --args="version [destination-dir] [classifier]" で渡せるように設定
+    // 使用例: ./gradlew runDownloadJars --args="--version 6.2.1 --destination lib/6.2.1 --classifier ipadic"
 }
 
 tasks.register('runWiki40bDownload', JavaExec) {
     mainClass = 'lucene.gosen.wikipedia.Wiki40bDownloader'
     classpath = sourceSets.main.runtimeClasspath
     systemProperty 'file.encoding', 'UTF-8'
-    // 引数が必要な場合は --args="[destination-dir] [TRAIN|VALIDATION|TEST|ALL]" で渡せるように設定
+    // 使用例: ./gradlew runWiki40bDownload --args="--destination data/wiki40b-ja --split TRAIN"
 }
 
 tasks.register('runWiki40bParser', JavaExec) {
     mainClass = 'lucene.gosen.wikipedia.Wiki40bParquetParser'
     classpath = sourceSets.main.runtimeClasspath
     systemProperty 'file.encoding', 'UTF-8'
-    // 引数が必要な場合は --args="old.jar new.jar [parquet-file]" で渡せるように設定
+    // 使用例: ./gradlew runWiki40bParser --args="--old-jar lib/old --new-jar lib/new --input data/train.parquet --max-records 1000 --format text"
 }

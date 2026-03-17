@@ -180,7 +180,6 @@ public class TextReportGenerator implements ReportGenerator {
                 if (printToConsole) System.out.println(newMsg);
 
             }
-            break;
         }
     }
 

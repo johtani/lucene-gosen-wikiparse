@@ -25,7 +25,14 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletionService;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 /**
  * Wikipediaパーサーの抽象基底クラス
@@ -71,64 +78,98 @@ public abstract class AbstractWikipediaParser {
         int falseCounter = 0;
         int skippedCounter = 0;
         boolean printToConsole = config.shouldPrintToConsole();
+        int workerCount = config.getWorkerCount();
+        int queueSize = config.getQueueSize();
 
         // データソース固有の初期化処理
         Object dataSource = initializeDataSource(config);
+        ExecutorService executor = Executors.newFixedThreadPool(workerCount);
+        CompletionService<ProcessedRecord> completionService =
+                new java.util.concurrent.ExecutorCompletionService<>(executor);
+        Map<Long, ProcessedRecord> pendingResults = new HashMap<>();
+        boolean inputExhausted = false;
+        long submittedSeq = 0;
+        long nextSeqToEmit = 0;
+        int inFlight = 0;
+        int scheduledCount = 0;
+        int maxRecordCount = config.getMaxRecordCount();
+
+        System.out.println("workers: " + workerCount + ", queueSize: " + queueSize);
 
         try {
-            // メイン処理ループ
-            WikipediaModel model;
-            while ((model = readNextModel(dataSource)) != null) {
-                if (shouldProcessModel(model)) {
-                    try {
-                        // 解析実行
-                        int skipped = analyzerManager.getOldModelAnalyzer().analyze(
-                                model, analyzerManager.getOldJarContainer(), oldResult);
-                        analyzerManager.getNewModelAnalyzer().analyze(
-                                model, analyzerManager.getNewJarContainer(), newResult);
-                        skippedCounter += skipped;
-
-                        // 結果比較
-                        boolean hasDifference = ParserUtils.compareResult(oldResult, newResult, RESULT_SIZE);
-                        if (hasDifference) {
-                            falseCounter++;
-                        }
-
-                        // レポートに結果を追加
-                        for (ReportGenerator generator : reportGenerators) {
-                            generator.addDiffResult(model, oldResult, newResult, hasDifference, printToConsole);
-                        }
-
-                        // コンソール出力
-                        if (printToConsole) {
-                            ParserUtils.printResults(counter, model, oldResult, newResult);
-                        }
-
-                        // 定期的なフラッシュ
-                        if (counter % 1000 == 0) {
-                            System.out.println("success count:" + counter);
-                            for (ReportGenerator generator : reportGenerators) {
-                                generator.flush();
-                            }
-                        }
-                        counter++;
-
-                        // 最大レコード数チェック
-                        if (config.getMaxRecordCount() > 0 && counter >= config.getMaxRecordCount()) {
-                            System.out.println("Reached max record count: " + config.getMaxRecordCount());
-                            break;
-                        }
-                    } catch (Exception e) {
-                        System.err.println("Error processing record #" + (counter + 1) +
-                                (model.getTitle() != null ? " (Title: " + model.getTitle() + ")" : "") +
-                                ": " + e.getMessage());
-                        // Continue processing next record
+            while (!inputExhausted || inFlight > 0) {
+                while (!inputExhausted
+                        && inFlight < queueSize
+                        && (maxRecordCount <= 0 || scheduledCount < maxRecordCount)) {
+                    WikipediaModel model = readNextModel(dataSource);
+                    if (model == null) {
+                        inputExhausted = true;
+                        break;
                     }
+                    if (!shouldProcessModel(model)) {
+                        continue;
+                    }
+
+                    long sequence = submittedSeq++;
+                    completionService.submit(() -> analyzeModel(sequence, model, analyzerManager));
+                    inFlight++;
+                    scheduledCount++;
+                }
+                if (!inputExhausted && maxRecordCount > 0 && scheduledCount >= maxRecordCount) {
+                    inputExhausted = true;
+                    System.out.println("Reached max record count: " + maxRecordCount);
+                }
+
+                if (inFlight == 0) {
+                    continue;
+                }
+
+                ProcessedRecord doneRecord = waitForCompletedRecord(completionService);
+                inFlight--;
+                pendingResults.put(doneRecord.sequence(), doneRecord);
+
+                while (pendingResults.containsKey(nextSeqToEmit)) {
+                    ProcessedRecord record = pendingResults.remove(nextSeqToEmit);
+                    nextSeqToEmit++;
+
+                    if (record.error() != null) {
+                        System.err.println("Error processing record #" + (counter + 1) +
+                                (record.model().getTitle() != null ? " (Title: " + record.model().getTitle() + ")" : "") +
+                                ": " + record.error().getMessage());
+                        continue;
+                    }
+
+                    System.arraycopy(record.oldResult(), 0, oldResult, 0, RESULT_SIZE);
+                    System.arraycopy(record.newResult(), 0, newResult, 0, RESULT_SIZE);
+                    skippedCounter += record.skipped();
+                    if (record.hasDifference()) {
+                        falseCounter++;
+                    }
+
+                    for (ReportGenerator generator : reportGenerators) {
+                        generator.addDiffResult(record.model(), oldResult, newResult, record.hasDifference(), printToConsole);
+                    }
+
+                    if (printToConsole) {
+                        ParserUtils.printResults(counter, record.model(), oldResult, newResult);
+                    }
+
+                    if (counter % 1000 == 0) {
+                        System.out.println("success count:" + counter);
+                        for (ReportGenerator generator : reportGenerators) {
+                            generator.flush();
+                        }
+                    }
+                    counter++;
                 }
             }
         } finally {
-            // データソースのクリーンアップ
-            closeDataSource(dataSource);
+            executor.shutdownNow();
+            try {
+                closeDataSource(dataSource);
+            } catch (Exception e) {
+                System.err.println("Warning: failed to close data source: " + e.getMessage());
+            }
         }
 
         // 実行情報の最終更新
@@ -142,6 +183,31 @@ public abstract class AbstractWikipediaParser {
         System.out.println("falseCounter: " + falseCounter);
         System.out.println("skippedCounter: " + skippedCounter);
         System.out.println((System.currentTimeMillis() - start) + "msec");
+    }
+
+    private ProcessedRecord waitForCompletedRecord(CompletionService<ProcessedRecord> completionService)
+            throws InterruptedException, ExecutionException {
+        Future<ProcessedRecord> future = completionService.take();
+        return future.get();
+    }
+
+    private ProcessedRecord analyzeModel(long sequence, WikipediaModel model, AnalyzerContainerManager analyzerManager) {
+        AnalyzeResult[] oldResult = ParserUtils.createAnalyzeResultArray(RESULT_SIZE);
+        AnalyzeResult[] newResult = ParserUtils.createAnalyzeResultArray(RESULT_SIZE);
+        try {
+            int skipped = analyzerManager.getOldModelAnalyzer().analyze(
+                    model, analyzerManager.getOldJarContainer(), oldResult);
+            analyzerManager.getNewModelAnalyzer().analyze(
+                    model, analyzerManager.getNewJarContainer(), newResult);
+            boolean hasDifference = ParserUtils.compareResult(oldResult, newResult, RESULT_SIZE);
+            return new ProcessedRecord(sequence, model, oldResult, newResult, skipped, hasDifference, null);
+        } catch (Exception e) {
+            return new ProcessedRecord(sequence, model, oldResult, newResult, 0, false, e);
+        }
+    }
+
+    private record ProcessedRecord(long sequence, WikipediaModel model, AnalyzeResult[] oldResult,
+                                   AnalyzeResult[] newResult, int skipped, boolean hasDifference, Exception error) {
     }
 
     /**

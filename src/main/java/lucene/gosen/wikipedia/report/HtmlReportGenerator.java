@@ -83,7 +83,6 @@ public class HtmlReportGenerator implements ReportGenerator {
             if (!oldResult[i].getPosList().equals(newResult[i].getPosList())) {
                 if (!types.contains("pos")) types.add("pos");
             }
-            break;
         }
         return types;
     }
@@ -330,7 +329,7 @@ public class HtmlReportGenerator implements ReportGenerator {
     }
 
     private void writeAnalyzeResults(BufferedWriter writer, AnalyzeResult[] results) throws IOException {
-        for (int i = 0; i < Math.min(results.length, 1); i++) {
+        for (int i = 0; i < Math.min(results.length, RESULT_SIZE); i++) {
             AnalyzeResult result = results[i];
 
             writer.write("                <div class=\"result-item\">\n");

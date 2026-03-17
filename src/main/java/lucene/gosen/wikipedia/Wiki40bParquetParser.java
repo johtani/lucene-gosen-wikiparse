@@ -10,8 +10,6 @@ import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
-import java.io.BufferedWriter;
-import java.io.FileWriter;
 import java.util.concurrent.Callable;
 
 /**
@@ -41,8 +39,15 @@ public class Wiki40bParquetParser extends AbstractWikipediaParser implements Cal
             description = "Report format: text, html, or both (default: ${DEFAULT-VALUE})")
     private String reportFormat;
 
+    @Option(names = {"-w", "--workers"}, defaultValue = "1",
+            description = "Number of worker threads for morphological analysis (default: ${DEFAULT-VALUE})")
+    private int workerCount;
+
+    @Option(names = {"-q", "--queue-size"}, defaultValue = "1000",
+            description = "Maximum number of in-flight records for parallel processing (default: ${DEFAULT-VALUE})")
+    private int queueSize;
+
     private ParquetReader<WikipediaModel> parquetReader;
-    private BufferedWriter bufferedWriter;
 
     public static void main(String[] args) {
         int exitCode = new CommandLine(new Wiki40bParquetParser()).execute(args);
@@ -62,6 +67,14 @@ public class Wiki40bParquetParser extends AbstractWikipediaParser implements Cal
             System.err.println("Error: max record count must be a positive number or -1 for unlimited");
             return 1;
         }
+        if (workerCount <= 0) {
+            System.err.println("Error: workers must be a positive number");
+            return 1;
+        }
+        if (queueSize <= 0) {
+            System.err.println("Error: queue-size must be a positive number");
+            return 1;
+        }
 
         // ParserConfigを構築
         ParserConfig config = ParserConfig.builder()
@@ -70,6 +83,8 @@ public class Wiki40bParquetParser extends AbstractWikipediaParser implements Cal
                 .inputPath(inputPath)
                 .maxRecordCount(maxRecordCount)
                 .reportFormat(reportFormat)
+                .workerCount(workerCount)
+                .queueSize(queueSize)
                 .build();
 
         // パーサーを実行
@@ -89,12 +104,6 @@ public class Wiki40bParquetParser extends AbstractWikipediaParser implements Cal
         parquetReader = ParquetReader.builder(new Wiki40bReadSupport(), path)
                 .withConf(conf)
                 .build();
-
-        // テキストレポート用のBufferedWriterを初期化（互換性のため）
-        if (config.getReportFormat().equals("text") || config.getReportFormat().equals("both")) {
-            bufferedWriter = new BufferedWriter(new FileWriter("diff_result_wiki40b.txt"));
-        }
-
         return parquetReader;
     }
 
@@ -112,9 +121,6 @@ public class Wiki40bParquetParser extends AbstractWikipediaParser implements Cal
     protected void closeDataSource(Object dataSource) throws Exception {
         if (parquetReader != null) {
             parquetReader.close();
-        }
-        if (bufferedWriter != null) {
-            bufferedWriter.close();
         }
     }
 

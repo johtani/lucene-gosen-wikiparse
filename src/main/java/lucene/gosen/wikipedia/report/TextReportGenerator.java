@@ -115,9 +115,31 @@ public class TextReportGenerator implements ReportGenerator {
 
     private void compareAndWriteResult(WikipediaModel model, AnalyzeResult[] oldResult,
                                        AnalyzeResult[] newResult, boolean printToConsole) throws IOException {
+        // フェーズ1: 事前差分チェック（コスト・termList・posListのいずれかに差分があるか確認）
         boolean different = false;
+        for (int i = 0; i < RESULT_SIZE; i++) {
+            if (oldResult[i].getTotalCost() != newResult[i].getTotalCost()
+                    || !oldResult[i].getTermList().equals(newResult[i].getTermList())
+                    || !oldResult[i].getPosList().equals(newResult[i].getPosList())) {
+                different = true;
+                break;
+            }
+        }
 
-        // size check
+        if (!different) {
+            return;
+        }
+
+        // フェーズ2: タイトル出力（差分がある場合のみ）
+        String titleMsg = "Title: " + model.getTitle();
+        writer.append(titleMsg);
+        writer.newLine();
+        if (printToConsole) {
+            System.out.println(titleMsg);
+            System.out.println(model.getText());
+        }
+
+        // フェーズ3: 差分詳細出力
         for (int i = 0; i < RESULT_SIZE; i++) {
             if (oldResult[i].getTotalCost() != newResult[i].getTotalCost()) {
                 String msg = "analyze result[cost] is different!!";
@@ -134,17 +156,6 @@ public class TextReportGenerator implements ReportGenerator {
                 writer.append(newMsg);
                 writer.newLine();
                 if (printToConsole) System.out.println(newMsg);
-
-                different = true;
-            }
-            if (different) {
-                if (i == 0) {
-                    writer.append(model.getTitle());
-                    if (printToConsole) System.out.println("Title: " + model.getTitle());
-                } else {
-                    System.out.println(model.getText());
-                }
-                //System.exit(-1);
             }
             if (!oldResult[i].getTermList().equals(newResult[i].getTermList())) {
                 String msg = "analyze result[termList] is different!!";
@@ -161,7 +172,6 @@ public class TextReportGenerator implements ReportGenerator {
                 writer.append(newMsg);
                 writer.newLine();
                 if (printToConsole) System.out.println(newMsg);
-
             }
             if (!oldResult[i].getPosList().equals(newResult[i].getPosList())) {
                 String msg = "analyze result[posList] is different!!";
@@ -178,7 +188,6 @@ public class TextReportGenerator implements ReportGenerator {
                 writer.append(newMsg);
                 writer.newLine();
                 if (printToConsole) System.out.println(newMsg);
-
             }
         }
     }

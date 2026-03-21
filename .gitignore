@@ -23,7 +23,6 @@ out/
 .classpath
 .settings/
 .metadata/
-bin/
 tmp/
 
 # OS
@@ -33,6 +32,8 @@ Thumbs.db
 # Others
 compilelib/
 diff_result.txt
+diff_*.txt
+diff_*.html
 
 !gradle/wrapper/gradle-wrapper.jar
 

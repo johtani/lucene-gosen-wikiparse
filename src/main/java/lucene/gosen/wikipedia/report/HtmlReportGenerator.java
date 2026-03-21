@@ -20,8 +20,10 @@ import lucene.gosen.wikipedia.WikipediaModel;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
-import java.io.FileWriter;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.nio.charset.CharsetEncoder;
+import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -86,7 +88,12 @@ public class HtmlReportGenerator implements ReportGenerator {
 
     @Override
     public void generateReport(String outputPath) throws IOException {
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(outputPath))) {
+        try (BufferedWriter writer = newUtf8Writer(
+                Path.of(outputPath),
+                StandardOpenOption.CREATE,
+                StandardOpenOption.WRITE,
+                StandardOpenOption.TRUNCATE_EXISTING
+        )) {
             writeHtmlHeader(writer);
             writeExecutionInfo(writer);
             writeSummary(writer);
@@ -392,13 +399,19 @@ public class HtmlReportGenerator implements ReportGenerator {
             return;
         }
         diffTempFile = Files.createTempFile("lucene-gosen-diff-", ".html");
-        diffWriter = Files.newBufferedWriter(
+        diffWriter = newUtf8Writer(
                 diffTempFile,
-                StandardCharsets.UTF_8,
                 StandardOpenOption.CREATE,
                 StandardOpenOption.WRITE,
                 StandardOpenOption.TRUNCATE_EXISTING
         );
+    }
+
+    private BufferedWriter newUtf8Writer(Path path, StandardOpenOption... options) throws IOException {
+        CharsetEncoder encoder = StandardCharsets.UTF_8.newEncoder()
+                .onMalformedInput(CodingErrorAction.REPLACE)
+                .onUnmappableCharacter(CodingErrorAction.REPLACE);
+        return new BufferedWriter(new OutputStreamWriter(Files.newOutputStream(path, options), encoder));
     }
 
     private void writeDiffRecord(BufferedWriter writer, int index, WikipediaModel model,

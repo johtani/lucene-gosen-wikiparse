@@ -18,9 +18,14 @@ package lucene.gosen.wikipedia.report;
 import lucene.gosen.test.util.AnalyzeResult;
 import lucene.gosen.wikipedia.WikipediaModel;
 
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
@@ -34,7 +39,9 @@ public class HtmlReportGenerator implements ReportGenerator {
     private static final int RESULT_SIZE = 2;
 
     private ExecutionInfo execInfo;
-    private final List<DiffRecord> diffRecords = new ArrayList<>();
+    private Path diffTempFile;
+    private BufferedWriter diffWriter;
+    private int diffCount;
 
     @Override
     public void setExecutionInfo(ExecutionInfo info) {
@@ -44,31 +51,14 @@ public class HtmlReportGenerator implements ReportGenerator {
     @Override
     public void addDiffResult(WikipediaModel model, AnalyzeResult[] oldResult,
                               AnalyzeResult[] newResult, boolean hasDifference,
-                              boolean printToConsole)  {
+                              boolean printToConsole) throws IOException {
         if (!hasDifference) {
             return; // 差分がない場合は記録しない
         }
 
-        // 差分レコードを作成
-        DiffRecord record = new DiffRecord();
-        record.title = model.getTitle();
-        record.text = model.getText();
-        record.oldResult = copyResults(oldResult);
-        record.newResult = copyResults(newResult);
-        record.diffTypes = detectDiffTypes(oldResult, newResult);
-
-        diffRecords.add(record);
-    }
-
-    private AnalyzeResult[] copyResults(AnalyzeResult[] source) {
-        AnalyzeResult[] copy = new AnalyzeResult[source.length];
-        for (int i = 0; i < source.length; i++) {
-            copy[i] = new AnalyzeResult();
-            copy[i].getTermList().addAll(source[i].getTermList());
-            copy[i].getPosList().addAll(source[i].getPosList());
-            copy[i].addCost(source[i].getTotalCost());
-        }
-        return copy;
+        ensureDiffWriter();
+        diffCount++;
+        writeDiffRecord(diffWriter, diffCount, model, oldResult, newResult);
     }
 
     private List<String> detectDiffTypes(AnalyzeResult[] oldResult, AnalyzeResult[] newResult) {
@@ -88,8 +78,10 @@ public class HtmlReportGenerator implements ReportGenerator {
     }
 
     @Override
-    public void flush()  {
-        // HTMLは最後にまとめて出力するため、ここでは何もしない
+    public void flush() throws IOException {
+        if (diffWriter != null) {
+            diffWriter.flush();
+        }
     }
 
     @Override
@@ -250,9 +242,9 @@ public class HtmlReportGenerator implements ReportGenerator {
     }
 
     private void writeDiffDetails(BufferedWriter writer) throws IOException {
-        writer.write("    <h2>差分詳細 (" + diffRecords.size() + "件)</h2>\n");
+        writer.write("    <h2>差分詳細 (" + diffCount + "件)</h2>\n");
 
-        if (diffRecords.isEmpty()) {
+        if (diffCount == 0) {
             writer.write("    <p>差分はありません。</p>\n");
             return;
         }
@@ -268,59 +260,38 @@ public class HtmlReportGenerator implements ReportGenerator {
         writer.write("      </thead>\n");
         writer.write("      <tbody>\n");
 
-        int index = 1;
-        for (DiffRecord record : diffRecords) {
-            String rowId = "row-" + index;
-            String detailId = "detail-" + index;
-
-            writer.write("        <tr id=\"" + rowId + "\">\n");
-            writer.write("          <td>" + index + "</td>\n");
-            writer.write("          <td>" + escapeHtml(record.title) + "</td>\n");
-            writer.write("          <td>");
-            for (String type : record.diffTypes) {
-                writer.write("<span class=\"diff-type " + type + "\">" + type.toUpperCase() + "</span> ");
-            }
-            writer.write("</td>\n");
-            writer.write("          <td><span class=\"toggle-detail\" onclick=\"toggleDetail('" + detailId + "')\">表示/非表示</span></td>\n");
-            writer.write("        </tr>\n");
-
-            writer.write("        <tr id=\"" + detailId + "\" class=\"detail-row\">\n");
-            writer.write("          <td colspan=\"4\">\n");
-            writeDiffDetail(writer, record);
-            writer.write("          </td>\n");
-            writer.write("        </tr>\n");
-
-            index++;
-        }
+        flush();
+        writeDiffBodyFromTempFile(writer);
 
         writer.write("      </tbody>\n");
         writer.write("    </table>\n");
     }
 
-    private void writeDiffDetail(BufferedWriter writer, DiffRecord record) throws IOException {
+    private void writeDiffDetail(BufferedWriter writer, String text,
+                                 AnalyzeResult[] oldResult, AnalyzeResult[] newResult) throws IOException {
         writer.write("            <div class=\"comparison\">\n");
 
         // Old panel
         writer.write("              <div class=\"comparison-panel old-panel\">\n");
         writer.write("                <h4>OLD</h4>\n");
-        writeAnalyzeResults(writer, record.oldResult);
+        writeAnalyzeResults(writer, oldResult);
         writer.write("              </div>\n");
 
         // New panel
         writer.write("              <div class=\"comparison-panel new-panel\">\n");
         writer.write("                <h4>NEW</h4>\n");
-        writeAnalyzeResults(writer, record.newResult);
+        writeAnalyzeResults(writer, newResult);
         writer.write("              </div>\n");
 
         writer.write("            </div>\n");
 
         // 元テキスト
-        if (record.text != null && !record.text.isEmpty()) {
+        if (text != null && !text.isEmpty()) {
             writer.write("            <details style=\"margin-top: 15px;\">\n");
             writer.write("              <summary>元テキスト</summary>\n");
             writer.write("              <div style=\"padding: 10px; background: #f9f9f9; margin-top: 10px; white-space: pre-wrap; font-size: 13px;\">");
-            writer.write(escapeHtml(record.text.substring(0, Math.min(500, record.text.length()))));
-            if (record.text.length() > 500) {
+            writer.write(escapeHtml(text.substring(0, Math.min(500, text.length()))));
+            if (text.length() > 500) {
                 writer.write("...(省略)");
             }
             writer.write("</div>\n");
@@ -389,18 +360,81 @@ public class HtmlReportGenerator implements ReportGenerator {
     }
 
     @Override
-    public void close()  {
-        // リソースのクリーンアップ（必要に応じて）
+    public void close() throws IOException {
+        IOException closeException = null;
+        if (diffWriter != null) {
+            try {
+                diffWriter.close();
+            } catch (IOException e) {
+                closeException = e;
+            } finally {
+                diffWriter = null;
+            }
+        }
+        if (diffTempFile != null) {
+            try {
+                Files.deleteIfExists(diffTempFile);
+            } catch (IOException e) {
+                if (closeException == null) {
+                    closeException = e;
+                }
+            } finally {
+                diffTempFile = null;
+            }
+        }
+        if (closeException != null) {
+            throw closeException;
+        }
     }
 
-    /**
-     * 差分レコードを保持する内部クラス
-     */
-    private static class DiffRecord {
-        String title;
-        String text;
-        AnalyzeResult[] oldResult;
-        AnalyzeResult[] newResult;
-        List<String> diffTypes;
+    private void ensureDiffWriter() throws IOException {
+        if (diffWriter != null) {
+            return;
+        }
+        diffTempFile = Files.createTempFile("lucene-gosen-diff-", ".html");
+        diffWriter = Files.newBufferedWriter(
+                diffTempFile,
+                StandardCharsets.UTF_8,
+                StandardOpenOption.CREATE,
+                StandardOpenOption.WRITE,
+                StandardOpenOption.TRUNCATE_EXISTING
+        );
+    }
+
+    private void writeDiffRecord(BufferedWriter writer, int index, WikipediaModel model,
+                                 AnalyzeResult[] oldResult, AnalyzeResult[] newResult) throws IOException {
+        String rowId = "row-" + index;
+        String detailId = "detail-" + index;
+
+        writer.write("        <tr id=\"" + rowId + "\">\n");
+        writer.write("          <td>" + index + "</td>\n");
+        writer.write("          <td>" + escapeHtml(model.getTitle()) + "</td>\n");
+        writer.write("          <td>");
+        List<String> diffTypes = detectDiffTypes(oldResult, newResult);
+        for (String type : diffTypes) {
+            writer.write("<span class=\"diff-type " + type + "\">" + type.toUpperCase() + "</span> ");
+        }
+        writer.write("</td>\n");
+        writer.write("          <td><span class=\"toggle-detail\" onclick=\"toggleDetail('" + detailId + "')\">表示/非表示</span></td>\n");
+        writer.write("        </tr>\n");
+
+        writer.write("        <tr id=\"" + detailId + "\" class=\"detail-row\">\n");
+        writer.write("          <td colspan=\"4\">\n");
+        writeDiffDetail(writer, model.getText(), oldResult, newResult);
+        writer.write("          </td>\n");
+        writer.write("        </tr>\n");
+    }
+
+    private void writeDiffBodyFromTempFile(BufferedWriter writer) throws IOException {
+        if (diffTempFile == null) {
+            return;
+        }
+        try (BufferedReader reader = Files.newBufferedReader(diffTempFile, StandardCharsets.UTF_8)) {
+            char[] buffer = new char[8192];
+            int read;
+            while ((read = reader.read(buffer)) >= 0) {
+                writer.write(buffer, 0, read);
+            }
+        }
     }
 }

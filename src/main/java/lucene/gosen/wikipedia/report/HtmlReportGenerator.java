@@ -245,6 +245,11 @@ public class HtmlReportGenerator implements ReportGenerator {
         writer.write("        <div class=\"number\">" + execInfo.getSkippedCount() + "</div>\n");
         writer.write("      </div>\n");
 
+        writer.write("      <div class=\"summary-card warning\">\n");
+        writer.write("        <div class=\"label\">失敗</div>\n");
+        writer.write("        <div class=\"number\">" + execInfo.getFailedCount() + "</div>\n");
+        writer.write("      </div>\n");
+
         writer.write("    </div>\n");
     }
 

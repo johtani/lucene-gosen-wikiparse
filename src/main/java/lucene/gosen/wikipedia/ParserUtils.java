@@ -143,15 +143,17 @@ public class ParserUtils {
      * @param counter        処理済みカウント
      * @param falseCounter   差分カウント
      * @param skippedCounter スキップカウント
+     * @param failedCounter  失敗カウント
      * @param startTime      開始時刻
      */
     public static void finalizeExecutionInfo(ExecutionInfo execInfo, int counter, int falseCounter,
-                                             int skippedCounter, long startTime) {
+                                             int skippedCounter, int failedCounter, long startTime) {
         execInfo.setEndTime(new Date());
         execInfo.setDurationMs(System.currentTimeMillis() - startTime);
         execInfo.setTotalProcessed(counter);
         execInfo.setDifferenceCount(falseCounter);
         execInfo.setSkippedCount(skippedCounter);
+        execInfo.setFailedCount(failedCounter);
     }
 
     /**

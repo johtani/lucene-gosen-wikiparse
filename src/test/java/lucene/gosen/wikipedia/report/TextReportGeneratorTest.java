@@ -161,4 +161,27 @@ class TextReportGeneratorTest {
         int costPos = content.indexOf("analyze result[cost] is different!!");
         assertTrue(titlePos < costPos, "タイトルが差分詳細より前に出力されること");
     }
+
+    @Test
+    void testSummaryIncludesFailedCounter() throws IOException {
+        ExecutionInfo info = new ExecutionInfo();
+        info.setOldJarPath("old.jar");
+        info.setNewJarPath("new.jar");
+        info.setXmlPath("input.xml");
+        info.setTotalProcessed(10);
+        info.setDifferenceCount(3);
+        info.setSkippedCount(2);
+        info.setFailedCount(1);
+        generator.setExecutionInfo(info);
+
+        WikipediaModel model = createModel("テスト記事", "本文テキスト");
+        AnalyzeResult[] oldResults = createResults(100, "旧単語", "名詞");
+        AnalyzeResult[] newResults = createResults(200, "新単語", "名詞");
+        generator.addDiffResult(model, oldResults, newResults, true, false);
+        generator.generateReport(outputFile.toString());
+        generator.flush();
+
+        String content = Files.readString(outputFile);
+        assertTrue(content.contains("failedCounter: 1"), "サマリーにfailedCounterが出力されること");
+    }
 }

@@ -39,6 +39,7 @@ public class ExecutionInfo {
     private int totalProcessed;
     private int differenceCount;
     private int skippedCount;
+    private int failedCount;
 
     public String getOldJarPath() {
         return oldJarPath;
@@ -170,5 +171,13 @@ public class ExecutionInfo {
 
     public void setSkippedCount(int skippedCount) {
         this.skippedCount = skippedCount;
+    }
+
+    public int getFailedCount() {
+        return failedCount;
+    }
+
+    public void setFailedCount(int failedCount) {
+        this.failedCount = failedCount;
     }
 }

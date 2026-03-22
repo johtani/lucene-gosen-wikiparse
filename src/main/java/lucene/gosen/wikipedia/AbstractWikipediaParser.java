@@ -77,6 +77,7 @@ public abstract class AbstractWikipediaParser {
         int counter = 0;
         int falseCounter = 0;
         int skippedCounter = 0;
+        int failedCounter = 0;
         boolean printToConsole = config.shouldPrintToConsole();
         int workerCount = config.getWorkerCount();
         int queueSize = config.getQueueSize();
@@ -133,6 +134,7 @@ public abstract class AbstractWikipediaParser {
                     nextSeqToEmit++;
 
                     if (record.error() != null) {
+                        failedCounter++;
                         System.err.println("Error processing record #" + (counter + 1) +
                                 (record.model().getTitle() != null ? " (Title: " + record.model().getTitle() + ")" : "") +
                                 ": " + record.error().getMessage());
@@ -173,7 +175,7 @@ public abstract class AbstractWikipediaParser {
         }
 
         // 実行情報の最終更新
-        ParserUtils.finalizeExecutionInfo(execInfo, counter, falseCounter, skippedCounter, start);
+        ParserUtils.finalizeExecutionInfo(execInfo, counter, falseCounter, skippedCounter, failedCounter, start);
 
         // レポート生成
         generateReports(reportGenerators);
@@ -182,6 +184,7 @@ public abstract class AbstractWikipediaParser {
         System.out.println("total processed: " + counter);
         System.out.println("falseCounter: " + falseCounter);
         System.out.println("skippedCounter: " + skippedCounter);
+        System.out.println("failedCounter: " + failedCounter);
         System.out.println((System.currentTimeMillis() - start) + "msec");
     }
 

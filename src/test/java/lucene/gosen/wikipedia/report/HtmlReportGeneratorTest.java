@@ -37,6 +37,7 @@ class HtmlReportGeneratorTest {
         info.setTotalProcessed(1);
         info.setDifferenceCount(1);
         info.setSkippedCount(0);
+        info.setFailedCount(2);
         generator.setExecutionInfo(info);
     }
 
@@ -58,6 +59,8 @@ class HtmlReportGeneratorTest {
         assertTrue(html.contains("差分詳細 (1件)"));
         assertTrue(html.contains("記事タイトル"));
         assertTrue(html.contains("diff-type cost"));
+        assertTrue(html.contains("失敗"));
+        assertTrue(html.contains(">2<"));
     }
 
     @Test

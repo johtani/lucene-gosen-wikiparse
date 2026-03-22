@@ -37,7 +37,7 @@ public class WikipediaModelAnalyzer {
         return (titleSkipped && textSkipped) ? 1 : 0;
     }
 
-    private boolean analyze(ComponentContainer container, String target, AnalyzeResult result) throws IllegalArgumentException, SecurityException, IllegalAccessException, InvocationTargetException, NoSuchMethodException {
+    private boolean analyze(ComponentContainer container, String target, AnalyzeResult result) throws IllegalArgumentException, SecurityException, IllegalAccessException, InvocationTargetException, NoSuchMethodException, IOException {
         result.reset();
 
         // Skip empty strings
@@ -70,9 +70,6 @@ public class WikipediaModelAnalyzer {
         } catch (ClassNotFoundException cnfe) {
             System.err.println("ClassNotFound!!!");
             throw new RuntimeException(cnfe);
-        } catch (IOException ioe) {
-            System.err.println("target:[" + target + "]");
-            ioe.printStackTrace();
         }
         return false; // not skipped
     }

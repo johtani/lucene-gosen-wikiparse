@@ -225,6 +225,8 @@ public class TextReportGenerator implements ReportGenerator {
             writer.newLine();
             writer.append("skippedCounter: ").append(String.valueOf(execInfo.getSkippedCount()));
             writer.newLine();
+            writer.append("failedCounter: ").append(String.valueOf(execInfo.getFailedCount()));
+            writer.newLine();
         }
     }
 

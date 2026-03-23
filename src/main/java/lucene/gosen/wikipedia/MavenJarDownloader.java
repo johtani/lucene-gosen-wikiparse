@@ -20,6 +20,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.concurrent.Callable;
+import java.util.jar.JarFile;
 
 /**
  * Maven CentralからluceneとGosenのJARファイルをダウンロードするクラス
@@ -71,10 +72,7 @@ public class MavenJarDownloader implements Callable<Integer> {
      */
     public static void downloadLuceneGosenWithDependencies(String version, String destDir, String classifier) throws Exception {
         Path destPath = Paths.get(destDir);
-        if (Files.notExists(destPath)) {
-            Files.createDirectories(destPath);
-            System.out.println("Created directory: " + destPath.toAbsolutePath());
-        }
+        DownloadUtils.ensureDirectory(destPath);
 
         // 1. lucene-gosenをダウンロード
         System.out.println("\n=== Downloading lucene-gosen ===");
@@ -177,35 +175,31 @@ public class MavenJarDownloader implements Callable<Integer> {
     private static void downloadFile(String urlString, String destString) throws IOException {
         Path destPath = Paths.get(destString);
 
-        // 既に存在する場合はスキップ
+        // SKIP_IF_VALID: 有効なJARが既存なら再ダウンロードしない
         if (Files.exists(destPath)) {
-            System.out.println("File already exists, skipping: " + destPath.getFileName());
-            return;
+            if (isLikelyValidJar(destPath)) {
+                System.out.println("Valid jar already exists, skipping: " + destPath.getFileName());
+                return;
+            }
+            System.out.println("Existing jar is invalid, re-downloading: " + destPath.getFileName());
+            Files.delete(destPath);
         }
 
         System.out.println("Downloading from: " + urlString);
         System.out.println("To: " + destPath.toAbsolutePath());
 
         URL url = URI.create(urlString).toURL();
-        try (InputStream in = new BufferedInputStream(url.openStream());
+        try (BufferedInputStream in = new BufferedInputStream(url.openStream());
              FileOutputStream out = new FileOutputStream(destPath.toFile())) {
+            DownloadUtils.copyWithProgress(in, out);
+        }
+    }
 
-            byte[] dataBuffer = new byte[65536]; // 64KB buffer
-            int bytesRead;
-            long totalBytesRead = 0;
-            long lastReportedTime = System.currentTimeMillis();
-
-            while ((bytesRead = in.read(dataBuffer)) != -1) {
-                out.write(dataBuffer, 0, bytesRead);
-                totalBytesRead += bytesRead;
-
-                long currentTime = System.currentTimeMillis();
-                if (currentTime - lastReportedTime > 5000) { // 5秒ごとに進捗表示
-                    System.out.printf("Downloaded: %.2f MB%n", totalBytesRead / (1024.0 * 1024.0));
-                    lastReportedTime = currentTime;
-                }
-            }
-            System.out.printf("Download completed! Total size: %.2f MB%n", totalBytesRead / (1024.0 * 1024.0));
+    private static boolean isLikelyValidJar(Path path) {
+        try (JarFile ignored = new JarFile(path.toFile())) {
+            return true;
+        } catch (IOException e) {
+            return false;
         }
     }
 }

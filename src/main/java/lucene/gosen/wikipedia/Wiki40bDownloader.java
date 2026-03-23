@@ -99,10 +99,7 @@ public class Wiki40bDownloader implements Callable<Integer> {
      */
     public static void downloadSplit(Split split, String destDir) throws IOException {
         Path destPath = Paths.get(destDir);
-        if (Files.notExists(destPath)) {
-            Files.createDirectories(destPath);
-            System.out.println("Created directory: " + destPath);
-        }
+        DownloadUtils.ensureDirectory(destPath);
 
         String url = split.getUrl();
         String destFile = destDir + "/" + split.getFileName();
@@ -147,23 +144,7 @@ public class Wiki40bDownloader implements Callable<Integer> {
 
         try (InputStream in = new BufferedInputStream(connection.getInputStream());
              FileOutputStream out = new FileOutputStream(tempPath.toFile())) {
-
-            byte[] dataBuffer = new byte[65536]; // 64KB buffer
-            int bytesRead;
-            long totalBytesRead = 0;
-            long lastReportedTime = System.currentTimeMillis();
-
-            while ((bytesRead = in.read(dataBuffer)) != -1) {
-                out.write(dataBuffer, 0, bytesRead);
-                totalBytesRead += bytesRead;
-
-                long currentTime = System.currentTimeMillis();
-                if (currentTime - lastReportedTime > 5000) { // 5秒ごとに進捗表示
-                    System.out.printf("Downloaded: %.2f MB%n", totalBytesRead / (1024.0 * 1024.0));
-                    lastReportedTime = currentTime;
-                }
-            }
-            System.out.printf("Download completed! Total size: %.2f MB%n", totalBytesRead / (1024.0 * 1024.0));
+            DownloadUtils.copyWithProgress(in, out);
         } catch (FileNotFoundException e) {
             throw new IOException("Download returned no file content: " + urlString, e);
         } finally {

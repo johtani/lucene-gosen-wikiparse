@@ -27,8 +27,6 @@ public class ExecutionInfo {
     private String dataSourcePath;  // XMLまたはParquetファイルのパス
     private String dataSourceType;  // "XML" または "Parquet"
     private int maxRecordCount;
-    private String reportFormat;
-    private String outputDirectory;
     private Date startTime;
     private Date endTime;
     private long durationMs;
@@ -91,22 +89,6 @@ public class ExecutionInfo {
 
     public void setMaxRecordCount(int maxRecordCount) {
         this.maxRecordCount = maxRecordCount;
-    }
-
-    public String getReportFormat() {
-        return reportFormat;
-    }
-
-    public void setReportFormat(String reportFormat) {
-        this.reportFormat = reportFormat;
-    }
-
-    public String getOutputDirectory() {
-        return outputDirectory;
-    }
-
-    public void setOutputDirectory(String outputDirectory) {
-        this.outputDirectory = outputDirectory;
     }
 
     public Date getStartTime() {

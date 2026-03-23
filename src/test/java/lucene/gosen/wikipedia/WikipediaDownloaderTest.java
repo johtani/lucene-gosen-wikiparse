@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -108,5 +109,33 @@ class WikipediaDownloaderTest {
             assertTrue(Files.exists(destDir));
             assertTrue(Files.isDirectory(destDir));
         }
+    }
+
+    @Test
+    void testDownloadFileSkipsWhenValidFileExists(@TempDir Path tempDir) throws IOException {
+        Path source = tempDir.resolve("source.txt");
+        Files.writeString(source, "new-content", StandardCharsets.UTF_8);
+
+        Path destination = tempDir.resolve("destination.txt");
+        Files.writeString(destination, "existing-content", StandardCharsets.UTF_8);
+
+        WikipediaDownloader.downloadFile(source.toUri().toString(), destination.toString());
+
+        String actual = Files.readString(destination, StandardCharsets.UTF_8);
+        assertEquals("existing-content", actual);
+    }
+
+    @Test
+    void testDownloadFileRedownloadsWhenExistingFileIsEmpty(@TempDir Path tempDir) throws IOException {
+        Path source = tempDir.resolve("source.txt");
+        Files.writeString(source, "new-content", StandardCharsets.UTF_8);
+
+        Path destination = tempDir.resolve("destination.txt");
+        Files.writeString(destination, "", StandardCharsets.UTF_8);
+
+        WikipediaDownloader.downloadFile(source.toUri().toString(), destination.toString());
+
+        String actual = Files.readString(destination, StandardCharsets.UTF_8);
+        assertEquals("new-content", actual);
     }
 }

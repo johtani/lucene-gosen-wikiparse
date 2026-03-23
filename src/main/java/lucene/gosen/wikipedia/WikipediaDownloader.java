@@ -4,10 +4,8 @@ import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
-import java.io.BufferedInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URI;
 import java.net.URL;
 import java.nio.file.Files;
@@ -51,35 +49,25 @@ public class WikipediaDownloader implements Callable<Integer> {
 
     public static void downloadFile(String urlString, String destString) throws IOException {
         Path destPath = Paths.get(destString);
-        Path parentDir = destPath.getParent();
-        if (parentDir != null && Files.notExists(parentDir)) {
-            Files.createDirectories(parentDir);
-            System.out.println("Created directory: " + parentDir);
+        DownloadUtils.ensureParentDirectory(destPath);
+
+        // SKIP_IF_VALID: サイズ0より大きい既存ファイルは有効とみなして再ダウンロードしない
+        if (Files.exists(destPath)) {
+            if (Files.size(destPath) > 0) {
+                System.out.println("Valid file already exists, skipping: " + destPath.getFileName());
+                return;
+            }
+            System.out.println("Existing file is empty, re-downloading: " + destPath.getFileName());
+            Files.delete(destPath);
         }
 
         System.out.println("Downloading from: " + urlString);
         System.out.println("To: " + destPath.toAbsolutePath());
 
         URL url = URI.create(urlString).toURL();
-        try (InputStream in = new BufferedInputStream(url.openStream());
+        try (var in = url.openStream();
              FileOutputStream out = new FileOutputStream(destPath.toFile())) {
-
-            byte[] dataBuffer = new byte[65536]; // 64KB buffer
-            int bytesRead;
-            long totalBytesRead = 0;
-            long lastReportedTime = System.currentTimeMillis();
-
-            while ((bytesRead = in.read(dataBuffer)) != -1) {
-                out.write(dataBuffer, 0, bytesRead);
-                totalBytesRead += bytesRead;
-
-                long currentTime = System.currentTimeMillis();
-                if (currentTime - lastReportedTime > 5000) { // 5秒ごとに進捗表示
-                    System.out.printf("Downloaded: %.2f MB%n", totalBytesRead / (1024.0 * 1024.0));
-                    lastReportedTime = currentTime;
-                }
-            }
-            System.out.printf("Download completed! Total size: %.2f MB%n", totalBytesRead / (1024.0 * 1024.0));
+            DownloadUtils.copyWithProgress(in, out);
         }
     }
 }

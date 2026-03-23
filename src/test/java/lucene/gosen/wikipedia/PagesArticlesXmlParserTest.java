@@ -8,8 +8,14 @@ import org.junit.jupiter.api.io.TempDir;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.lang.reflect.Method;
+
+import javax.xml.stream.XMLEventReader;
+import javax.xml.stream.XMLInputFactory;
+import javax.xml.stream.events.XMLEvent;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 public class PagesArticlesXmlParserTest {
 
@@ -68,9 +74,117 @@ public class PagesArticlesXmlParserTest {
         }
     }
 
+    @Test
+    public void testTextNewLineRemovedAfterSentenceBoundary() throws Exception {
+        String xml = """
+                <mediawiki xmlns="http://www.mediawiki.org/xml/export-0.10/">
+                  <page>
+                    <title>Test Page</title>
+                    <revision>
+                      <id>1</id>
+                      <timestamp>2023-01-01T00:00:00Z</timestamp>
+                      <text>文1。
+                文2</text>
+                    </revision>
+                  </page>
+                </mediawiki>
+                """;
+
+        WikipediaModel model = parseFirstPage(xml);
+        assertNotNull(model);
+        assertEquals("文1。文2", model.getText());
+    }
+
+    @Test
+    public void testTextNewLinePreservedWithoutSentenceBoundary() throws Exception {
+        String xml = """
+                <mediawiki xmlns="http://www.mediawiki.org/xml/export-0.10/">
+                  <page>
+                    <title>Test Page</title>
+                    <revision>
+                      <id>1</id>
+                      <timestamp>2023-01-01T00:00:00Z</timestamp>
+                      <text>文1
+                文2</text>
+                    </revision>
+                  </page>
+                </mediawiki>
+                """;
+
+        WikipediaModel model = parseFirstPage(xml);
+        assertNotNull(model);
+        assertEquals("文1\n文2", model.getText());
+    }
+
+    @Test
+    public void testTextLeadingTrailingWhitespaceRemoved() throws Exception {
+        String xml = """
+                <mediawiki xmlns="http://www.mediawiki.org/xml/export-0.10/">
+                  <page>
+                    <title>Test Page</title>
+                    <revision>
+                      <id>1</id>
+                      <timestamp>2023-01-01T00:00:00Z</timestamp>
+                      <text>
+
+                文1。
+                文2
+
+                      </text>
+                    </revision>
+                  </page>
+                </mediawiki>
+                """;
+
+        WikipediaModel model = parseFirstPage(xml);
+        assertNotNull(model);
+        assertEquals("文1。文2", model.getText());
+    }
+
+    @Test
+    public void testTextWithCDataAndSplitEventsKeepsMeaningfulNewline() throws Exception {
+        String xml = """
+                <mediawiki xmlns="http://www.mediawiki.org/xml/export-0.10/">
+                  <page>
+                    <title>Test Page</title>
+                    <revision>
+                      <id>1</id>
+                      <timestamp>2023-01-01T00:00:00Z</timestamp>
+                      <text>文1<![CDATA[
+                文2]]>文3</text>
+                    </revision>
+                  </page>
+                </mediawiki>
+                """;
+
+        WikipediaModel model = parseFirstPage(xml);
+        assertNotNull(model);
+        assertEquals("文1\n文2文3", model.getText());
+    }
+
+    @Test
+    public void testTitleStillTrimmed() throws Exception {
+        String xml = """
+                <mediawiki xmlns="http://www.mediawiki.org/xml/export-0.10/">
+                  <page>
+                    <title>  Test Page  </title>
+                    <revision>
+                      <id>1</id>
+                      <timestamp>2023-01-01T00:00:00Z</timestamp>
+                      <text>test</text>
+                    </revision>
+                  </page>
+                </mediawiki>
+                """;
+
+        WikipediaModel model = parseFirstPage(xml);
+        assertNotNull(model);
+        assertEquals("Test Page", model.getTitle());
+    }
+
     private InputStream invokeGetInputStream(String path) throws IOException {
         try {
-            java.lang.reflect.Method method = PagesArticlesXmlParser.class.getDeclaredMethod("getInputStream", String.class);
+            Method method = PagesArticlesXmlParser.class.getDeclaredMethod("getInputStream", String.class);
             method.setAccessible(true);
             return (InputStream) method.invoke(null, path);
         } catch (Exception e) {
@@ -79,5 +193,22 @@ public class PagesArticlesXmlParserTest {
             }
             throw new RuntimeException(e);
         }
+    }
+
+    private WikipediaModel parseFirstPage(String xml) throws Exception {
+        XMLInputFactory factory = XMLInputFactory.newInstance();
+        Method method = PagesArticlesXmlParser.class.getDeclaredMethod("pageParse", XMLEventReader.class);
+        method.setAccessible(true);
+
+        try (XMLEventReader reader = factory.createXMLEventReader(new StringReader(xml))) {
+            while (reader.hasNext()) {
+                XMLEvent event = reader.nextEvent();
+                if (event.isStartElement()
+                        && "page".equals(event.asStartElement().getName().getLocalPart())) {
+                    return (WikipediaModel) method.invoke(null, reader);
+                }
+            }
+        }
+        return null;
     }
 }

@@ -4,12 +4,29 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class MavenJarDownloaderTest {
+
+    private String invokeExtractLuceneCoreVersion(String pomUrl, String defaultVersion) throws Exception {
+        Method method = MavenJarDownloader.class.getDeclaredMethod("extractLuceneCoreVersion", String.class, String.class);
+        method.setAccessible(true);
+        try {
+            return (String) method.invoke(null, pomUrl, defaultVersion);
+        } catch (InvocationTargetException e) {
+            Throwable cause = e.getCause();
+            if (cause instanceof Exception exception) {
+                throw exception;
+            }
+            throw e;
+        }
+    }
 
     @Test
     void testConstants() {
@@ -137,5 +154,50 @@ class MavenJarDownloaderTest {
             assertNotNull(args[0]); // version
             assertNotNull(args[1]); // destination
         });
+    }
+
+    @Test
+    void testExtractLuceneCoreVersionWithValidPom(@TempDir Path tempDir) throws Exception {
+        Path pomFile = tempDir.resolve("valid.pom");
+        String pomContent = """
+                <project>
+                  <dependencies>
+                    <dependency>
+                      <groupId>org.apache.lucene</groupId>
+                      <artifactId>lucene-core</artifactId>
+                      <version>9.10.0</version>
+                    </dependency>
+                  </dependencies>
+                </project>
+                """;
+        Files.writeString(pomFile, pomContent, StandardCharsets.UTF_8);
+
+        String actualVersion = invokeExtractLuceneCoreVersion(pomFile.toUri().toString(), "6.2.1");
+
+        assertEquals("9.10.0", actualVersion);
+    }
+
+    @Test
+    void testExtractLuceneCoreVersionWithDoctypeFallsBack(@TempDir Path tempDir) throws Exception {
+        Path pomFile = tempDir.resolve("doctype.pom");
+        String pomContent = """
+                <!DOCTYPE project [
+                  <!ENTITY xxe SYSTEM "file:///etc/passwd">
+                ]>
+                <project>
+                  <dependencies>
+                    <dependency>
+                      <groupId>org.apache.lucene</groupId>
+                      <artifactId>lucene-core</artifactId>
+                      <version>&xxe;</version>
+                    </dependency>
+                  </dependencies>
+                </project>
+                """;
+        Files.writeString(pomFile, pomContent, StandardCharsets.UTF_8);
+
+        String actualVersion = invokeExtractLuceneCoreVersion(pomFile.toUri().toString(), "6.2.1");
+
+        assertEquals("6.2.1", actualVersion);
     }
 }

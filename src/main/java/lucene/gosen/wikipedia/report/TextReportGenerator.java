@@ -93,7 +93,7 @@ public class TextReportGenerator implements ReportGenerator {
             }
         }
 
-        writer.append("Wikipedia XML: ").append(execInfo.getXmlPath());
+        writer.append("Wikipedia XML: ").append(execInfo.getDataSourcePath());
         writer.newLine();
 
         if (execInfo.getMaxRecordCount() > 0) {

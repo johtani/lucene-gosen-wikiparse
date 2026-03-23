@@ -319,7 +319,7 @@ public class PagesArticlesXmlParser extends AbstractWikipediaParser implements C
     }
 
     private static void trimHorizontalWhitespace(StringBuilder builder) {
-        while (builder.length() > 0) {
+        while (!builder.isEmpty()) {
             char ch = builder.charAt(builder.length() - 1);
             if (ch == ' ' || ch == '\t' || ch == '\f') {
                 builder.setLength(builder.length() - 1);

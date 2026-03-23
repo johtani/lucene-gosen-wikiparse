@@ -89,10 +89,7 @@ public class HtmlReportGenerator implements ReportGenerator {
     @Override
     public void generateReport(String outputPath) throws IOException {
         try (BufferedWriter writer = newUtf8Writer(
-                Path.of(outputPath),
-                StandardOpenOption.CREATE,
-                StandardOpenOption.WRITE,
-                StandardOpenOption.TRUNCATE_EXISTING
+                Path.of(outputPath)
         )) {
             writeHtmlHeader(writer);
             writeExecutionInfo(writer);
@@ -405,18 +402,15 @@ public class HtmlReportGenerator implements ReportGenerator {
         }
         diffTempFile = Files.createTempFile("lucene-gosen-diff-", ".html");
         diffWriter = newUtf8Writer(
-                diffTempFile,
-                StandardOpenOption.CREATE,
-                StandardOpenOption.WRITE,
-                StandardOpenOption.TRUNCATE_EXISTING
+                diffTempFile
         );
     }
 
-    private BufferedWriter newUtf8Writer(Path path, StandardOpenOption... options) throws IOException {
+    private BufferedWriter newUtf8Writer(Path path) throws IOException {
         CharsetEncoder encoder = StandardCharsets.UTF_8.newEncoder()
                 .onMalformedInput(CodingErrorAction.REPLACE)
                 .onUnmappableCharacter(CodingErrorAction.REPLACE);
-        return new BufferedWriter(new OutputStreamWriter(Files.newOutputStream(path, options), encoder));
+        return new BufferedWriter(new OutputStreamWriter(Files.newOutputStream(path, StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING), encoder));
     }
 
     private void writeDiffRecord(BufferedWriter writer, int index, WikipediaModel model,

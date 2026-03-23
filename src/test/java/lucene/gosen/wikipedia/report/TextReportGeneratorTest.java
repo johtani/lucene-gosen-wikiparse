@@ -167,7 +167,6 @@ class TextReportGeneratorTest {
         ExecutionInfo info = new ExecutionInfo();
         info.setOldJarPath("old.jar");
         info.setNewJarPath("new.jar");
-        info.setXmlPath("input.xml");
         info.setTotalProcessed(10);
         info.setDifferenceCount(3);
         info.setSkippedCount(2);

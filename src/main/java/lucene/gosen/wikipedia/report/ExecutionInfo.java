@@ -71,18 +71,6 @@ public class ExecutionInfo {
         this.dataSourceType = dataSourceType;
     }
 
-    // 後方互換性のために残す
-    @Deprecated
-    public String getXmlPath() {
-        return dataSourcePath;
-    }
-
-    @Deprecated
-    public void setXmlPath(String xmlPath) {
-        this.dataSourcePath = xmlPath;
-        this.dataSourceType = "XML";
-    }
-
     public int getMaxRecordCount() {
         return maxRecordCount;
     }

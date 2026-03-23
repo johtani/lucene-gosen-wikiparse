@@ -205,7 +205,7 @@ public class PagesArticlesXmlParser extends AbstractWikipediaParser implements C
             else if (isStartElem(event, "revision")) revisionParse(reader, model);
                 // title
             else if (isStartElem(event, "title")) {
-                String title = getText(reader, "title");
+                String title = getText(reader, "title", false);
                 // タイトルにコロンが含まれる場合は管理用記事なのでスキップする
                 if (title.indexOf(':') != -1) return null;
                 // (曖昧さ回避)や(音楽)などの注釈文字を外す
@@ -217,7 +217,7 @@ public class PagesArticlesXmlParser extends AbstractWikipediaParser implements C
                 } else {
                     model.setTitle(title);
                 }
-            } else if (isStartElem(event, "id")) model.setId(getText(reader, "id"));
+            } else if (isStartElem(event, "id")) model.setId(getText(reader, "id", false));
         }
         return model;
     }
@@ -231,25 +231,24 @@ public class PagesArticlesXmlParser extends AbstractWikipediaParser implements C
             XMLEvent event = reader.nextEvent();
             if (isEndElem(event, "revision")) break;
             else if (isStartElem(event, "text")) model
-                    .setText(getText(reader, "text"));
+                    .setText(getText(reader, "text", true));
             else if (isStartElem(event, "timestamp")) model.setLastModified(sdf
-                    .parse(getText(reader, "timestamp")));
+                    .parse(getText(reader, "timestamp", false)));
         }
     }
 
     /**
-     * 指定のend tagを発見するまで、CHARACTERSを取得
+     * 指定のend tagを発見するまで、テキストを取得
      */
-    private static String getText(XMLEventReader reader, String name)
+    private static String getText(XMLEventReader reader, String name, boolean normalizeForAnalysis)
             throws Exception {
         StringBuilder builder = new StringBuilder();
         try {
             while (reader.hasNext()) {
                 XMLEvent event = reader.nextEvent();
                 if (isEndElem(event, name)) break;
-                else if (event.getEventType() == XMLStreamConstants.CHARACTERS) {
-                    String data = event.asCharacters().getData().trim();
-                    if (!data.isEmpty()) builder.append(data);
+                else if (event.isCharacters()) {
+                    builder.append(event.asCharacters().getData());
                 }
             }
         } catch (com.ctc.wstx.exc.WstxIOException e) {
@@ -257,7 +256,77 @@ public class PagesArticlesXmlParser extends AbstractWikipediaParser implements C
             System.err.println("Warning: Stream ended while reading <" + name + "> element");
             // Return whatever was collected so far
         }
-        return builder.toString();
+        String rawText = builder.toString();
+        if (!normalizeForAnalysis) {
+            return rawText.trim();
+        }
+        return normalizeTextForAnalysis(rawText);
+    }
+
+    private static String normalizeTextForAnalysis(String text) {
+        if (text == null || text.isEmpty()) {
+            return "";
+        }
+
+        String normalizedLineBreaks = text.replace("\r\n", "\n").replace('\r', '\n').strip();
+        StringBuilder builder = new StringBuilder(normalizedLineBreaks.length());
+
+        int i = 0;
+        while (i < normalizedLineBreaks.length()) {
+            char ch = normalizedLineBreaks.charAt(i);
+            if (ch != '\n') {
+                builder.append(ch);
+                i++;
+                continue;
+            }
+
+            while (i < normalizedLineBreaks.length() && normalizedLineBreaks.charAt(i) == '\n') {
+                i++;
+            }
+
+            int nextIndex = i;
+            while (nextIndex < normalizedLineBreaks.length()) {
+                char nextChar = normalizedLineBreaks.charAt(nextIndex);
+                if (nextChar == ' ' || nextChar == '\t' || nextChar == '\f') {
+                    nextIndex++;
+                    continue;
+                }
+                break;
+            }
+
+            if (endsWithSentenceBoundary(builder)) {
+                trimHorizontalWhitespace(builder);
+                i = nextIndex;
+                continue;
+            }
+
+            builder.append('\n');
+            i = nextIndex;
+        }
+
+        return builder.toString().strip();
+    }
+
+    private static boolean endsWithSentenceBoundary(StringBuilder builder) {
+        for (int i = builder.length() - 1; i >= 0; i--) {
+            char ch = builder.charAt(i);
+            if (Character.isWhitespace(ch)) {
+                continue;
+            }
+            return ch == '。' || ch == '．' || ch == '.' || ch == '!' || ch == '?' || ch == '！' || ch == '？';
+        }
+        return false;
+    }
+
+    private static void trimHorizontalWhitespace(StringBuilder builder) {
+        while (builder.length() > 0) {
+            char ch = builder.charAt(builder.length() - 1);
+            if (ch == ' ' || ch == '\t' || ch == '\f') {
+                builder.setLength(builder.length() - 1);
+                continue;
+            }
+            break;
+        }
     }
 
     /**

@@ -200,7 +200,8 @@ public class PagesArticlesXmlParserTest {
         Method method = PagesArticlesXmlParser.class.getDeclaredMethod("pageParse", XMLEventReader.class);
         method.setAccessible(true);
 
-        try (XMLEventReader reader = factory.createXMLEventReader(new StringReader(xml))) {
+        XMLEventReader reader = factory.createXMLEventReader(new StringReader(xml));
+        try {
             while (reader.hasNext()) {
                 XMLEvent event = reader.nextEvent();
                 if (event.isStartElement()
@@ -208,6 +209,8 @@ public class PagesArticlesXmlParserTest {
                     return (WikipediaModel) method.invoke(null, reader);
                 }
             }
+        } finally {
+            reader.close();
         }
         return null;
     }

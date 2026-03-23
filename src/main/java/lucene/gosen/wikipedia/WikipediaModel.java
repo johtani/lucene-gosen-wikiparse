@@ -5,12 +5,11 @@ import java.util.Date;
 
 public class WikipediaModel {
 
-    String title;
-    String titleAnnotation;
-    String id;
-    String text;
-    int textCount;
-    Date lastModified;
+    private String title;
+    private String titleAnnotation;
+    private String id;
+    private String text;
+    private Date lastModified;
 
     public String getId() {
         return id;
@@ -52,6 +51,7 @@ public class WikipediaModel {
         this.lastModified = lastModified;
     }
 
+    @Override
     public String toString() {
         return this.id + "," + this.title + "," + this.titleAnnotation + "," + this.lastModified;
     }
